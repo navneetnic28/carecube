@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   ArrowRight,
-  Brain,
   CalendarDays,
   Check,
   ChevronDown,
   Clock3,
-  CreditCard,
+  Heart,
   HeartPulse,
+  Hospital,
   MapPin,
   Menu,
   QrCode,
@@ -18,234 +18,159 @@ import {
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  Users,
   X,
   Zap,
 } from "lucide-react";
 
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+
 import ReviewsSection from "../components/ReviewsSection";
 import FeaturedDoctors from "../components/FeaturedDoctors";
 import NotificationBell from "../components/NotificationBell";
 import Footer from "../components/Footer";
 import Logo from "../components/Logo";
 
-/*
-  CareCube Home
-  - Keeps existing /doctors/search API
-  - Keeps AuthContext, Login/Register, Dashboard, Explore
-  - Keeps FeaturedDoctors, ReviewsSection, NotificationBell and Footer
-  - Uses CSS 3D/parallax instead of adding Three.js, so no new dependency is required.
-*/
-
-const medicalImages = {
-  hero:
-    "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1400&q=90",
-  consultation:
-    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1000&q=85",
-  hospital:
-    "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1000&q=85",
-  tablet:
-    "https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1000&q=85",
-  patient:
-    "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1000&q=85",
-  team:
-    "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1000&q=85",
-};
-
-const imageAlt = {
-  hero: "Doctor consulting a patient in a modern clinic",
-  consultation: "Healthcare consultation",
-  hospital: "Modern hospital interior",
-  tablet: "Healthcare professional using a tablet",
-  patient: "Patient receiving healthcare support",
-  team: "Healthcare team",
-};
+/* -------------------------------------------------------
+   DATA
+------------------------------------------------------- */
 
 const faqData = [
   {
     question: "What is CareCube?",
     answer:
-      "CareCube is a healthcare platform that helps people discover doctors and centres, check availability, book appointments and follow their appointment journey.",
+      "CareCube is a healthcare platform that helps patients discover doctors and healthcare centres, book appointments and follow their appointment journey.",
   },
   {
     question: "Can I search for a doctor?",
     answer:
-      "Yes. Use the homepage search or Explore Doctors to find providers by name, specialty or other available search criteria.",
-  },
-  {
-    question: "How does QR booking work?",
-    answer:
-      "Scan a CareCube QR code at a participating healthcare location and continue the booking journey from your phone.",
+      "Yes. You can search doctors by name, specialization or healthcare service using the search box or Explore Doctors.",
   },
   {
     question: "Can I book an appointment in advance?",
     answer:
-      "Yes, where advance booking is enabled, you can choose an available slot and reserve the appointment before visiting.",
+      "Yes. Where advance booking is enabled, you can select an available appointment slot and reserve your visit.",
   },
   {
     question: "Can I track my appointment?",
     answer:
-      "CareCube is designed to provide appointment and queue information so you can follow the journey instead of relying only on phone calls.",
+      "CareCube is designed to provide appointment and queue information so you can better understand when your turn is approaching.",
   },
 ];
 
-const featureData = [
+const departments = [
+  {
+    icon: HeartPulse,
+    title: "Cardiology",
+    text: "Heart and cardiovascular care",
+  },
+  {
+    icon: Stethoscope,
+    title: "General Medicine",
+    text: "Everyday medical consultation",
+  },
   {
     icon: Activity,
-    title: "Real-Time Availability",
-    text: "See available doctors before you travel.",
+    title: "Orthopedics",
+    text: "Bone, joint and mobility care",
+  },
+  {
+    icon: Users,
+    title: "Pediatrics",
+    text: "Healthcare for children",
+  },
+];
+
+const services = [
+  {
+    icon: CalendarDays,
+    title: "Easy Appointment",
+    text: "Book your appointment without unnecessary calls or waiting.",
   },
   {
     icon: Clock3,
-    title: "Live Appointment Tracking",
-    text: "Follow appointment and queue status in real time.",
-  },
-  {
-    icon: CalendarDays,
-    title: "Smart Booking",
-    text: "Reserve an available appointment in a few steps.",
+    title: "Live Queue",
+    text: "Know the status of your appointment and queue.",
   },
   {
     icon: QrCode,
     title: "QR Booking",
-    text: "Scan, book and continue your healthcare journey.",
+    text: "Scan and continue your booking journey from your phone.",
   },
   {
     icon: ShieldCheck,
-    title: "Verified Reviews",
-    text: "Use patient feedback as one part of your decision.",
-  },
-  {
-    icon: Brain,
-    title: "AI Search",
-    text: "Use intelligent search to discover relevant care options.",
-  },
-  {
-    icon: CreditCard,
-    title: "Secure Payments",
-    text: "A simple digital payment experience where enabled.",
-  },
-  {
-    icon: HeartPulse,
-    title: "Patient Journey",
-    text: "Connect discovery, booking, tracking and visit.",
+    title: "Secure Experience",
+    text: "Your healthcare journey is designed with privacy in mind.",
   },
 ];
 
-const journeySteps = [
-  ["01", Search, "Find Doctor", "Search doctors and check available options."],
-  ["02", CalendarDays, "Choose Slot", "Select an available appointment time."],
-  ["03", QrCode, "Book", "Confirm digitally or continue from a QR code."],
-  ["04", Activity, "Track", "Follow appointment and queue updates."],
-  ["05", Stethoscope, "Visit", "Arrive with a clearer idea of your turn."],
-  ["06", Check, "Complete", "Finish your healthcare journey."],
-];
+/* -------------------------------------------------------
+   SMALL COMPONENTS
+------------------------------------------------------- */
 
-const FloatingOrb = ({ className = "", duration = 8, delay = 0 }) => (
-  <motion.div
-    animate={{
-      y: [0, -18, 0],
-      x: [0, 10, 0],
-      rotate: [0, 8, 0],
-    }}
-    transition={{ duration, delay, repeat: Infinity, ease: "easeInOut" }}
-    className={`pointer-events-none absolute rounded-full blur-3xl ${className}`}
-  />
-);
-
-function MagneticButton({ children, className = "", ...props }) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 260, damping: 18 });
-  const sy = useSpring(y, { stiffness: 260, damping: 18 });
-
-  return (
-    <motion.button
-      style={{ x: sx, y: sy }}
-      onMouseMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        x.set((e.clientX - (r.left + r.width / 2)) * 0.08);
-        y.set((e.clientY - (r.top + r.height / 2)) * 0.08);
-      }}
-      onMouseLeave={() => {
-        x.set(0);
-        y.set(0);
-      }}
-      whileTap={{ scale: 0.96 }}
-      className={`relative overflow-hidden ${className}`}
-      {...props}
-    >
-      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-      <span className="relative">{children}</span>
-    </motion.button>
-  );
-}
-
-function GlassCard({ children, className = "", ...props }) {
+function FloatingCard({
+  children,
+  className = "",
+  delay = 0,
+  duration = 4,
+}) {
   return (
     <motion.div
-      whileHover={{ y: -7, rotateX: 1.5, rotateY: -1.5 }}
-      transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      className={`rounded-3xl border border-white/60 bg-white/70 shadow-[0_25px_80px_-30px_rgba(37,99,235,.35)] backdrop-blur-2xl ${className}`}
-      {...props}
+      animate={{
+        y: [0, -10, 0],
+      }}
+      transition={{
+        duration,
+        delay,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+      className={`absolute ${className}`}
     >
       {children}
     </motion.div>
   );
 }
 
-function Stat({ value, label, index }) {
-  const [shown, setShown] = useState("0");
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (value === "24/7") {
-        setShown(value);
-        return;
-      }
-
-      const numeric = parseInt(value.replace(/\D/g, ""), 10);
-      if (!numeric) {
-        setShown(value);
-        return;
-      }
-
-      let current = 0;
-      const step = Math.max(1, Math.ceil(numeric / 28));
-      const interval = setInterval(() => {
-        current += step;
-        if (current >= numeric) {
-          current = numeric;
-          clearInterval(interval);
-        }
-        setShown(`${current}${value.includes("K") ? "K+" : value.includes("+") ? "+" : ""}`);
-      }, 35);
-
-      return () => clearInterval(interval);
-    }, index * 100);
-
-    return () => clearTimeout(timer);
-  }, [value, index]);
-
+function FeaturePill({ icon: Icon, title, text }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.4 }}
-      transition={{ delay: index * 0.08 }}
-      className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 p-6 text-center shadow-lg shadow-blue-100/40 backdrop-blur-xl"
-    >
-      <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-blue-100/70 blur-2xl" />
-      <div className="relative">
-        <p className="text-3xl font-black tracking-tight text-blue-600">{shown}</p>
-        <p className="mt-1 text-xs font-bold uppercase tracking-[.16em] text-slate-500">
-          {label}
-        </p>
+    <div className="flex items-center gap-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
+        <Icon size={19} className="text-[#10a79b]" />
       </div>
-    </motion.div>
+
+      <div>
+        <p className="text-sm font-bold text-[#183b5b]">{title}</p>
+        <p className="mt-0.5 text-[11px] text-[#7790a4]">{text}</p>
+      </div>
+    </div>
   );
 }
+
+function SectionHeading({ eyebrow, title, description, center = false }) {
+  return (
+    <div className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
+      <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#10a79b]">
+        {eyebrow}
+      </span>
+
+      <h2 className="mt-4 font-serif text-4xl font-bold leading-tight tracking-tight text-[#173b5c] sm:text-5xl">
+        {title}
+      </h2>
+
+      {description && (
+        <p className="mt-5 text-[15px] leading-7 text-[#6f879b]">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------
+   HOME
+------------------------------------------------------- */
 
 function Home() {
   const { user, logout } = useAuth();
@@ -253,13 +178,11 @@ function Home() {
   const [query, setQuery] = useState("");
   const [doctors, setDoctors] = useState([]);
   const [searched, setSearched] = useState(false);
+
   const [mobileMenu, setMobileMenu] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
-  const [activeToken, setActiveToken] = useState(18);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
-  const heroRef = useRef(null);
+  const [activeToken, setActiveToken] = useState(18);
 
   const dashboardPath = {
     patient: "/patient/dashboard",
@@ -268,39 +191,23 @@ function Home() {
     admin: "/admin/dashboard",
   }[user?.role];
 
-  const searchSuggestions = useMemo(
-    () => [
-      "Cardiologist",
-      "Dentist",
-      "Dermatologist",
-      "General Physician",
-      "ENT",
-      "Orthopedic",
-    ],
-    []
-  );
-
-  useEffect(() => {
-    const onMove = (event) => {
-      if (!heroRef.current) return;
-      const r = heroRef.current.getBoundingClientRect();
-      setMouse({
-        x: ((event.clientX - r.left) / r.width - 0.5) * 2,
-        y: ((event.clientY - r.top) / r.height - 0.5) * 2,
-      });
-    };
-
-    window.addEventListener("mousemove", onMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
+  /* ---------------------------------------------
+     LIVE TOKEN ANIMATION
+  --------------------------------------------- */
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setActiveToken((token) => (token >= 23 ? 18 : token + 1));
-    }, 2400);
+      setActiveToken((current) =>
+        current >= 24 ? 18 : current + 1
+      );
+    }, 2200);
 
     return () => clearInterval(timer);
   }, []);
+
+  /* ---------------------------------------------
+     DOCTOR SEARCH
+  --------------------------------------------- */
 
   const search = async (e) => {
     e.preventDefault();
@@ -313,7 +220,9 @@ function Home() {
 
     try {
       const response = await api.get("/doctors/search", {
-        params: { query },
+        params: {
+          query: query.trim(),
+        },
       });
 
       setDoctors(response.data.doctors || []);
@@ -325,64 +234,156 @@ function Home() {
     }
   };
 
-  const selectSuggestion = (value) => {
-    setQuery(value);
-    setSearchFocused(false);
+  const closeMobile = () => {
+    setMobileMenu(false);
   };
 
-  const tiltX = mouse.y * -4;
-  const tiltY = mouse.x * 5;
-
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-white text-[#173b5c]">
+      {/* =====================================================
+          CUSTOM DESIGN SYSTEM
+      ===================================================== */}
+
       <style>{`
-        @keyframes cc-grid {
-          0% { transform: translate3d(0,0,0); }
-          100% { transform: translate3d(40px,40px,0); }
+        html {
+          scroll-behavior: smooth;
         }
-        @keyframes cc-scan {
-          0%,100% { transform: translateX(-120%); opacity: 0; }
-          35% { opacity: .8; }
-          65% { opacity: .2; }
-          100% { transform: translateX(120%); opacity: 0; }
+
+        .carecube-serif {
+          font-family: Georgia, "Times New Roman", serif;
         }
-        @keyframes cc-spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes cc-pulse {
-          0%,100% { transform: scale(.96); opacity: .45; }
-          50% { transform: scale(1.04); opacity: .9; }
-        }
-        @keyframes cc-wave {
-          0% { transform: translateX(-30%); }
-          100% { transform: translateX(30%); }
-        }
-        .cc-grid {
+
+        .hero-grid {
           background-image:
-            linear-gradient(rgba(37,99,235,.055) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(37,99,235,.055) 1px, transparent 1px);
-          background-size: 42px 42px;
-          animation: cc-grid 18s linear infinite;
+            linear-gradient(rgba(16,167,155,.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(16,167,155,.035) 1px, transparent 1px);
+          background-size: 45px 45px;
         }
-        .cc-scan::after {
+
+        .hero-orbit {
+          animation: orbit 22s linear infinite;
+        }
+
+        .hero-orbit-reverse {
+          animation: orbitReverse 28s linear infinite;
+        }
+
+        .float-slow {
+          animation: floatSlow 5s ease-in-out infinite;
+        }
+
+        .float-medium {
+          animation: floatMedium 4s ease-in-out infinite;
+        }
+
+        .pulse-soft {
+          animation: pulseSoft 3s ease-in-out infinite;
+        }
+
+        .heartbeat {
+          animation: heartbeat 2s ease-in-out infinite;
+        }
+
+        @keyframes orbit {
+          from {
+            transform: rotate(0deg);
+          }
+
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes orbitReverse {
+          from {
+            transform: rotate(360deg);
+          }
+
+          to {
+            transform: rotate(0deg);
+          }
+        }
+
+        @keyframes floatSlow {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+
+          50% {
+            transform: translateY(-12px);
+          }
+        }
+
+        @keyframes floatMedium {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+
+        @keyframes pulseSoft {
+          0%, 100% {
+            transform: scale(.96);
+            opacity: .55;
+          }
+
+          50% {
+            transform: scale(1.05);
+            opacity: .9;
+          }
+        }
+
+        @keyframes heartbeat {
+          0%, 100% {
+            transform: scale(1);
+          }
+
+          15% {
+            transform: scale(1.08);
+          }
+
+          30% {
+            transform: scale(1);
+          }
+
+          45% {
+            transform: scale(1.06);
+          }
+
+          60% {
+            transform: scale(1);
+          }
+        }
+
+        .medical-cross::before,
+        .medical-cross::after {
           content: "";
           position: absolute;
-          inset: 0;
-          width: 35%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
-          animation: cc-scan 5s ease-in-out infinite;
+          background: currentColor;
+          border-radius: 5px;
         }
-        .cc-orbit {
-          animation: cc-spin 18s linear infinite;
+
+        .medical-cross::before {
+          width: 46%;
+          height: 16%;
+          left: 27%;
+          top: 42%;
         }
-        .cc-pulse {
-          animation: cc-pulse 3s ease-in-out infinite;
+
+        .medical-cross::after {
+          width: 16%;
+          height: 46%;
+          left: 42%;
+          top: 27%;
         }
-        .cc-wave {
-          animation: cc-wave 4s ease-in-out infinite alternate;
-        }
+
         @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
+          *,
+          *::before,
+          *::after {
             animation-duration: .01ms !important;
             animation-iteration-count: 1 !important;
             scroll-behavior: auto !important;
@@ -391,49 +392,85 @@ function Home() {
         }
       `}</style>
 
-      {/* NAVBAR */}
-      <header className="sticky top-0 z-[100] border-b border-slate-200/60 bg-white/75 backdrop-blur-2xl">
-        <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-6 lg:px-8">
-          <Link to="/" className="shrink-0">
+      {/* =====================================================
+          NAVBAR
+      ===================================================== */}
+
+      <header className="sticky top-0 z-[100] border-b border-[#e7eeee] bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-[82px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
+          {/* LOGO */}
+
+          <Link
+            to="/"
+            onClick={closeMobile}
+            className="shrink-0"
+          >
             <Logo size="md" />
           </Link>
 
-          <nav className="hidden items-center gap-7 lg:flex">
-            {[
-              ["#features", "Features"],
-              ["#how-it-works", "How it works"],
-              ["#live-queue", "Live Queue"],
-              ["#why-carecube", "Why CareCube"],
-            ].map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-blue-50 hover:text-blue-600"
-              >
-                {label}
-              </a>
-            ))}
+          {/* DESKTOP NAV */}
+
+          <nav className="hidden items-center gap-1 xl:flex">
+            <a
+              href="#home"
+              className="rounded-xl px-4 py-3 text-sm font-bold text-[#10a79b] transition hover:bg-[#effaf8]"
+            >
+              Home
+            </a>
+
+            <a
+              href="#about"
+              className="rounded-xl px-4 py-3 text-sm font-semibold text-[#516b82] transition hover:bg-[#effaf8] hover:text-[#10a79b]"
+            >
+              About Us
+            </a>
+
+            <a
+              href="#departments"
+              className="rounded-xl px-4 py-3 text-sm font-semibold text-[#516b82] transition hover:bg-[#effaf8] hover:text-[#10a79b]"
+            >
+              Departments
+            </a>
+
             <Link
               to="/explore"
-              className="rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-blue-50 hover:text-blue-600"
+              className="rounded-xl px-4 py-3 text-sm font-semibold text-[#516b82] transition hover:bg-[#effaf8] hover:text-[#10a79b]"
             >
-              Explore Doctors
+              Doctors
             </Link>
+
+            <a
+              href="#services"
+              className="rounded-xl px-4 py-3 text-sm font-semibold text-[#516b82] transition hover:bg-[#effaf8] hover:text-[#10a79b]"
+            >
+              Services
+            </a>
+
+            <a
+              href="#contact"
+              className="rounded-xl px-4 py-3 text-sm font-semibold text-[#516b82] transition hover:bg-[#effaf8] hover:text-[#10a79b]"
+            >
+              Contact
+            </a>
           </nav>
 
-          <div className="hidden items-center gap-2 lg:flex">
+          {/* DESKTOP ACTION */}
+
+          <div className="hidden items-center gap-3 xl:flex">
             {user ? (
               <>
                 <NotificationBell />
+
                 <Link
                   to={dashboardPath}
-                  className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-600"
+                  className="rounded-2xl bg-[#123b5a] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#123b5a]/15 transition hover:-translate-y-0.5 hover:bg-[#0e6f74]"
                 >
                   Dashboard
                 </Link>
+
                 <button
                   onClick={logout}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:text-blue-600"
+                  className="rounded-2xl border border-[#dce7eb] bg-white px-5 py-3 text-sm font-bold text-[#4e687d] transition hover:border-[#10a79b] hover:text-[#10a79b]"
                 >
                   Logout
                 </button>
@@ -442,470 +479,431 @@ function Home() {
               <>
                 <Link
                   to="/login"
-                  className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-600"
+                  className="rounded-2xl bg-[#123b5a] px-6 py-3 text-sm font-bold text-white shadow-xl shadow-[#123b5a]/15 transition hover:-translate-y-0.5 hover:bg-[#0e6f74]"
                 >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700"
-                >
-                  Get Started
+                  🔐 Login
                 </Link>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-2 lg:hidden">
+          {/* MOBILE ACTION */}
+
+          <div className="flex items-center gap-2 xl:hidden">
+            {user && <NotificationBell />}
+
             {!user && (
               <Link
                 to="/login"
-                className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20"
+                className="rounded-xl bg-[#123b5a] px-4 py-2.5 text-sm font-bold text-white"
               >
                 Login
               </Link>
             )}
-            {user && <NotificationBell />}
+
             <button
               type="button"
-              aria-label="Toggle menu"
+              aria-label="Open menu"
               aria-expanded={mobileMenu}
-              onClick={() => setMobileMenu((v) => !v)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700"
+              onClick={() => setMobileMenu((value) => !value)}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#dce7eb] bg-white text-[#123b5a]"
             >
-              {mobileMenu ? <X size={21} /> : <Menu size={21} />}
+              {mobileMenu ? (
+                <X size={22} />
+              ) : (
+                <Menu size={22} />
+              )}
             </button>
           </div>
         </div>
 
-        <motion.div
-          initial={false}
-          animate={{
-            height: mobileMenu ? "auto" : 0,
-            opacity: mobileMenu ? 1 : 0,
-          }}
-          className="overflow-hidden border-t border-slate-200/70 bg-white/95 lg:hidden"
-        >
-          <div className="mx-auto max-w-7xl px-5 py-4">
-            <div className="grid gap-1">
-              {[
-                ["#features", "Features"],
-                ["#how-it-works", "How it works"],
-                ["#live-queue", "Live Queue"],
-                ["#why-carecube", "Why CareCube"],
-              ].map(([href, label]) => (
-                <a
-                  key={href}
-                  href={href}
-                  onClick={() => setMobileMenu(false)}
-                  className="rounded-xl px-4 py-3 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  {label}
-                </a>
-              ))}
-              <Link
-                to="/explore"
-                onClick={() => setMobileMenu(false)}
-                className="rounded-xl px-4 py-3 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600"
-              >
-                Explore Doctors
-              </Link>
+        {/* MOBILE MENU */}
 
-              {!user ? (
-                <Link
-                  to="/register"
-                  onClick={() => setMobileMenu(false)}
-                  className="mt-2 rounded-xl bg-slate-950 px-4 py-3 text-center font-bold text-white"
-                >
-                  Get Started
-                </Link>
-              ) : (
-                <>
+        <AnimatePresence>
+          {mobileMenu && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-[#e7eeee] bg-white xl:hidden"
+            >
+              <div className="mx-auto max-w-[1440px] px-5 py-5 sm:px-8">
+                <div className="grid gap-1">
+                  {[
+                    ["#home", "Home"],
+                    ["#about", "About Us"],
+                    ["#departments", "Departments"],
+                    ["#services", "Services"],
+                    ["#contact", "Contact"],
+                  ].map(([href, label]) => (
+                    <a
+                      key={href}
+                      href={href}
+                      onClick={closeMobile}
+                      className="rounded-xl px-4 py-3.5 font-bold text-[#516b82] hover:bg-[#effaf8] hover:text-[#10a79b]"
+                    >
+                      {label}
+                    </a>
+                  ))}
+
                   <Link
-                    to={dashboardPath}
-                    onClick={() => setMobileMenu(false)}
-                    className="mt-2 rounded-xl bg-blue-600 px-4 py-3 text-center font-bold text-white"
+                    to="/explore"
+                    onClick={closeMobile}
+                    className="rounded-xl px-4 py-3.5 font-bold text-[#516b82] hover:bg-[#effaf8] hover:text-[#10a79b]"
                   >
-                    Dashboard
+                    Doctors
                   </Link>
-                  <button
-                    onClick={() => {
-                      setMobileMenu(false);
-                      logout();
-                    }}
-                    className="rounded-xl border border-slate-200 px-4 py-3 font-bold text-slate-700"
-                  >
-                    Logout
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </motion.div>
+
+                  {!user ? (
+                    <Link
+                      to="/login"
+                      onClick={closeMobile}
+                      className="mt-2 flex items-center justify-center rounded-xl bg-[#123b5a] px-4 py-3.5 font-bold text-white"
+                    >
+                      🔐 Login
+                    </Link>
+                  ) : (
+                    <>
+                      <Link
+                        to={dashboardPath}
+                        onClick={closeMobile}
+                        className="mt-2 rounded-xl bg-[#10a79b] px-4 py-3.5 text-center font-bold text-white"
+                      >
+                        Dashboard
+                      </Link>
+
+                      <button
+                        onClick={() => {
+                          closeMobile();
+                          logout();
+                        }}
+                        className="rounded-xl border border-[#dce7eb] px-4 py-3.5 font-bold text-[#516b82]"
+                      >
+                        Logout
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
+      {/* =====================================================
+          HERO
+      ===================================================== */}
+
       <main>
-        {/* HERO */}
         <section
-          ref={heroRef}
-          className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_15%_15%,rgba(59,130,246,.16),transparent_30%),radial-gradient(circle_at_85%_25%,rgba(34,211,238,.15),transparent_30%),linear-gradient(180deg,#eff7ff_0%,#ffffff_70%)]"
+          id="home"
+          className="relative isolate overflow-hidden bg-[#ecfbfa]"
         >
-          <div className="cc-grid pointer-events-none absolute inset-0 opacity-70" />
-          <FloatingOrb className="-left-40 top-24 h-96 w-96 bg-blue-400/25" duration={9} />
-          <FloatingOrb className="-right-44 top-10 h-[460px] w-[460px] bg-cyan-300/25" duration={11} delay={1} />
+          {/* BACKGROUND */}
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-white/70 to-transparent" />
+          <div className="hero-grid pointer-events-none absolute inset-0 opacity-60" />
 
-          <div className="relative mx-auto max-w-7xl px-5 pb-24 pt-14 sm:px-6 sm:pt-20 lg:px-8 lg:pb-32 lg:pt-24">
+          <div className="pointer-events-none absolute -right-40 -top-32 h-[520px] w-[520px] rounded-full bg-[#b9eee9]/70 blur-3xl" />
+
+          <div className="pointer-events-none absolute -left-48 bottom-[-220px] h-[500px] w-[500px] rounded-full bg-[#c9f4f0]/60 blur-3xl" />
+
+          <div className="pointer-events-none absolute right-[20%] top-[20%] h-[360px] w-[360px] rounded-full border border-[#9edfd9]/40" />
+
+          <div className="relative mx-auto max-w-[1440px] px-5 pb-16 pt-12 sm:px-8 sm:pb-20 sm:pt-16 lg:px-12 lg:pb-20 lg:pt-20">
             <div className="grid items-center gap-14 lg:grid-cols-[1.02fr_.98fr]">
-              <div className="relative z-20 text-center lg:text-left">
+              {/* LEFT */}
+
+              <div className="relative z-10 text-center lg:text-left">
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[.12em] text-blue-700 shadow-lg shadow-blue-100/30 backdrop-blur"
+                  transition={{ duration: 0.5 }}
+                  className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#b6ebe5] bg-[#dcf7f4] px-5 py-2.5 text-xs font-extrabold text-[#109e94]"
                 >
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  </span>
-                  Live healthcare network
-                  <span className="text-slate-300">•</span>
-                  2030-ready experience
+                  <Sparkles size={14} />
+                  Smart Healthcare
+                  <span className="text-[#79c8c1]">•</span>
+                  Simple Care
                 </motion.div>
 
                 <motion.h1
-                  initial={{ opacity: 0, y: 28 }}
+                  initial={{ opacity: 0, y: 25 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.75, delay: 0.08 }}
-                  className="text-5xl font-black leading-[.98] tracking-[-.055em] text-slate-950 sm:text-6xl lg:text-[78px]"
+                  transition={{ duration: 0.7, delay: 0.08 }}
+                  className="carecube-serif text-[48px] font-bold leading-[0.98] tracking-[-0.04em] text-[#102f4c] sm:text-[64px] lg:text-[76px] xl:text-[82px]"
                 >
-                  Healthcare,
-                  <span className="block bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 bg-clip-text pb-2 text-transparent">
-                    reimagined
+                  Healthcare that
+                  <span className="block text-[#13a497]">
+                    cares for you.
                   </span>
-                  <span className="block">for the future.</span>
                 </motion.h1>
 
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.65, delay: 0.18 }}
-                  className="mx-auto mt-7 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg lg:mx-0"
+                  className="mx-auto mt-7 max-w-[650px] text-base leading-8 text-[#66839b] sm:text-lg lg:mx-0"
                 >
-                  Find trusted doctors, discover healthcare centres, book
-                  appointments and follow your journey in real time — through
-                  one intelligent healthcare platform.
+                  CareCube connects patients, doctors and hospitals through
+                  a smarter healthcare experience designed to make medical
+                  care simple, organized and accessible.
                 </motion.p>
+
+                {/* CTA */}
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.65, delay: 0.28 }}
-                  className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start"
+                  className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start"
                 >
-                  <Link to="/explore">
-                    <MagneticButton className="group w-full rounded-2xl bg-blue-600 px-7 py-4 font-black text-white shadow-[0_20px_45px_-15px_rgba(37,99,235,.65)] transition hover:bg-blue-700 sm:w-auto">
-                      <span className="flex items-center justify-center gap-2">
-                        Find a Doctor
-                        <ArrowRight size={18} className="transition group-hover:translate-x-1" />
-                      </span>
-                    </MagneticButton>
+                  <Link
+                    to="/explore"
+                    className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-[#10a79b] px-7 py-4 text-sm font-extrabold text-white shadow-[0_18px_40px_-16px_rgba(16,167,155,.65)] transition hover:-translate-y-1 hover:bg-[#0e9489]"
+                  >
+                    <CalendarDays size={17} />
+                    Book An Appointment
+                    <ArrowRight
+                      size={17}
+                      className="transition group-hover:translate-x-1"
+                    />
                   </Link>
 
-                  <Link
-                    to={user ? dashboardPath : "/register"}
-                    className="group inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/85 px-7 py-4 font-black text-slate-800 shadow-lg shadow-slate-200/40 backdrop-blur transition hover:-translate-y-1 hover:border-blue-200 hover:text-blue-600"
+                  <a
+                    href="#how-it-works"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#bcdde0] bg-white/80 px-7 py-4 text-sm font-extrabold text-[#244f69] shadow-sm transition hover:-translate-y-1 hover:border-[#10a79b] hover:text-[#10a79b]"
                   >
-                    {user ? "Open Dashboard" : "Register Your Centre"}
-                    <ArrowRight size={18} className="transition group-hover:translate-x-1" />
-                  </Link>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#e9f8f7] text-[#10a79b]">
+                      ▶
+                    </span>
+                    How It Works
+                  </a>
                 </motion.div>
 
-                {/* Futuristic search */}
-                <motion.form
-                  initial={{ opacity: 0, y: 25 }}
+                {/* HERO FEATURES */}
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.65, delay: 0.38 }}
-                  onSubmit={search}
-                  className={`relative mx-auto mt-10 max-w-3xl rounded-[24px] border bg-white/85 p-2 shadow-[0_30px_80px_-30px_rgba(15,23,42,.28)] backdrop-blur-2xl transition lg:mx-0 ${
-                    searchFocused
-                      ? "border-blue-300 ring-4 ring-blue-100/70"
-                      : "border-white"
-                  }`}
+                  transition={{ duration: 0.7, delay: 0.4 }}
+                  className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3 lg:max-w-[700px]"
                 >
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-3">
-                      <Search className="shrink-0 text-blue-500" size={21} />
-                      <input
-                        type="text"
-                        placeholder="Search doctor, specialty or service..."
-                        value={query}
-                        onFocus={() => setSearchFocused(true)}
-                        onBlur={() => setTimeout(() => setSearchFocused(false), 120)}
-                        onChange={(e) => setQuery(e.target.value)}
-                        className="min-w-0 w-full bg-transparent py-3.5 text-sm font-semibold outline-none placeholder:text-slate-400"
-                      />
-                    </div>
+                  <FeaturePill
+                    icon={Check}
+                    title="Easy Booking"
+                    text="Simple appointment process"
+                  />
 
-                    <div className="hidden items-center gap-2 rounded-2xl border border-slate-100 px-4 sm:flex">
-                      <MapPin size={18} className="text-blue-500" />
-                      <span className="text-sm font-semibold text-slate-500">Your location</span>
-                    </div>
+                  <FeaturePill
+                    icon={Zap}
+                    title="Smart Queue"
+                    text="Track your appointment"
+                  />
 
-                    <button
-                      type="submit"
-                      className="rounded-2xl bg-slate-950 px-7 py-3.5 text-sm font-black text-white transition hover:bg-blue-600"
-                    >
-                      Search
-                    </button>
-                  </div>
-
-                  {searchFocused && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="absolute left-2 right-2 top-[calc(100%+10px)] z-50 rounded-3xl border border-white bg-white/95 p-3 text-left shadow-2xl backdrop-blur-2xl"
-                    >
-                      <p className="px-3 py-2 text-[10px] font-black uppercase tracking-[.18em] text-slate-400">
-                        Popular searches
-                      </p>
-                      <div className="grid gap-1 sm:grid-cols-2">
-                        {searchSuggestions.map((suggestion) => (
-                          <button
-                            type="button"
-                            key={suggestion}
-                            onMouseDown={() => selectSuggestion(suggestion)}
-                            className="flex items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-600"
-                          >
-                            <Search size={16} />
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.form>
-
-                <div className="mt-7 flex flex-wrap justify-center gap-5 text-xs font-bold text-slate-500 lg:justify-start">
-                  <span className="flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-emerald-500" />
-                    Secure experience
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <Zap size={16} className="text-blue-500" />
-                    Fast booking
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <HeartPulse size={16} className="text-rose-500" />
-                    Patient focused
-                  </span>
-                </div>
+                  <FeaturePill
+                    icon={ShieldCheck}
+                    title="Secure"
+                    text="Your information stays protected"
+                  />
+                </motion.div>
               </div>
 
-              {/* HERO 3D VISUAL */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, x: 35 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
-                transition={{ duration: 1, delay: 0.15 }}
-                className="relative mx-auto w-full max-w-[610px]"
-                style={{ perspective: 1200 }}
-              >
+              {/* RIGHT VISUAL */}
+
+              <div className="relative mx-auto h-[480px] w-full max-w-[620px] sm:h-[570px]">
+                {/* LARGE CIRCLES */}
+
+                <div className="absolute left-1/2 top-1/2 h-[390px] w-[390px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#a4ded9]/50 sm:h-[490px] sm:w-[490px]" />
+
+                <div className="absolute left-1/2 top-1/2 h-[310px] w-[310px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#a4ded9]/40 sm:h-[400px] sm:w-[400px]" />
+
+                <div className="pulse-soft absolute left-1/2 top-1/2 h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#9de2dc]/40 blur-3xl sm:h-[340px] sm:w-[340px]" />
+
+                {/* ORBIT */}
+
+                <div className="hero-orbit absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#8bd6d0]/50 sm:h-[510px] sm:w-[510px]">
+                  <div className="absolute left-[8%] top-[10%] h-4 w-4 rounded-full bg-[#10a79b] shadow-lg shadow-[#10a79b]/40" />
+                </div>
+
+                {/* MAIN MEDICAL CARD */}
+
                 <motion.div
-                  animate={{ rotateX: tiltX, rotateY: tiltY }}
-                  transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                  className="relative"
-                  style={{ transformStyle: "preserve-3d" }}
+                  initial={{ opacity: 0, scale: 0.88, y: 30 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{
+                    duration: 0.9,
+                    delay: 0.15,
+                    type: "spring",
+                    stiffness: 70,
+                  }}
+                  className="absolute left-1/2 top-1/2 flex h-[285px] w-[245px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[42px] border border-white/90 bg-white/90 shadow-[0_40px_100px_-30px_rgba(22,105,105,.35)] backdrop-blur-xl sm:h-[345px] sm:w-[300px]"
                 >
-                  {/* Orbital rings */}
-                  <div className="pointer-events-none absolute -inset-8 sm:-inset-12">
-                    <div className="cc-orbit absolute inset-0 rounded-full border border-blue-300/30" />
-                    <div className="cc-orbit absolute inset-10 rounded-full border border-cyan-300/30 [animation-direction:reverse] [animation-duration:13s]" />
-                    <div className="cc-pulse absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/20 blur-3xl" />
-                  </div>
+                  {/* inner glow */}
 
-                  {/* Main photo */}
-                  <div
-                    className="relative overflow-hidden rounded-[42px] border border-white/80 bg-white/45 p-3 shadow-[0_45px_100px_-30px_rgba(37,99,235,.5)] backdrop-blur-2xl"
-                    style={{ transform: "translateZ(20px)" }}
-                  >
-                    <div className="cc-scan relative overflow-hidden rounded-[34px]">
-                      <img
-                        src={medicalImages.hero}
-                        alt={imageAlt.hero}
-                        className="h-[440px] w-full object-cover object-center sm:h-[530px]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-blue-500/10" />
-                      <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                        <div className="max-w-xs rounded-3xl border border-white/20 bg-slate-950/45 p-5 text-white backdrop-blur-xl">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-[.18em] text-blue-200">
-                                Live consultation
-                              </p>
-                              <p className="mt-1 text-xl font-black">Dr. Priya Sharma</p>
-                              <p className="text-sm text-blue-100">General Physician</p>
-                            </div>
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-                              <Stethoscope size={22} />
-                            </div>
-                          </div>
-                          <div className="mt-4 flex items-center gap-2 text-xs font-bold">
-                            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
-                            Available today
-                          </div>
-                        </div>
-                      </div>
+                  <div className="absolute inset-6 rounded-[34px] bg-gradient-to-br from-[#ecfbfa] to-[#f9ffff]" />
+
+                  {/* MEDICAL ICON */}
+
+                  <div className="relative flex h-32 w-32 items-center justify-center rounded-[34px] bg-[#e0f7f4] shadow-inner sm:h-40 sm:w-40">
+                    <div className="medical-cross relative h-20 w-20 text-[#10a79b] sm:h-24 sm:w-24" />
+
+                    <div className="absolute -right-2 bottom-1 flex h-9 w-9 items-center justify-center rounded-xl bg-[#10a79b] text-white shadow-lg">
+                      <PlusIcon />
                     </div>
                   </div>
 
-                  {/* Floating status card */}
-                  <GlassCard
-                    className="absolute -left-5 top-12 w-52 p-4 sm:-left-8"
-                    style={{ transform: "translateZ(90px)" }}
-                    animate={{ y: [0, -9, 0] }}
-                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-[9px] font-black uppercase tracking-[.16em] text-slate-400">
-                        Doctor available
-                      </p>
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_14px_rgba(16,185,129,.8)]" />
-                    </div>
-                    <p className="mt-2 text-sm font-black text-slate-900">Online now</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">2 slots open</p>
-                  </GlassCard>
+                  {/* HEART */}
 
-                  {/* Queue card */}
-                  <GlassCard
-                    className="absolute -right-4 bottom-28 w-52 p-4 sm:-right-8"
-                    style={{ transform: "translateZ(100px)" }}
-                    animate={{ y: [0, 10, 0] }}
-                    transition={{ duration: 3.7, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                        <Clock3 size={18} />
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black uppercase tracking-[.15em] text-slate-400">
-                          Live queue
-                        </p>
-                        <p className="text-sm font-black">5 patients ahead</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <motion.div
-                        animate={{ width: ["35%", "72%", "48%"] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400"
-                      />
-                    </div>
-                  </GlassCard>
-
-                  {/* Confirmed card */}
-                  <GlassCard
-                    className="absolute right-4 top-2 hidden w-52 p-4 sm:block"
-                    style={{ transform: "translateZ(120px)" }}
-                    animate={{ rotate: [0, 1.5, 0], y: [0, -5, 0] }}
-                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                        <Check size={20} />
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black uppercase tracking-[.15em] text-slate-400">
-                          Confirmed
-                        </p>
-                        <p className="text-sm font-black">10:30 AM</p>
-                      </div>
-                    </div>
-                  </GlassCard>
-
-                  {/* AI match */}
-                  <GlassCard
-                    className="absolute bottom-5 left-4 hidden w-48 p-4 sm:block"
-                    style={{ transform: "translateZ(130px)" }}
-                    animate={{ y: [0, 8, 0] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sparkles size={17} className="text-cyan-500" />
-                      <span className="text-xs font-black">98% MATCH</span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">AI healthcare search</p>
-                  </GlassCard>
-
-                  {/* 3D medical objects */}
-                  <motion.div
-                    animate={{ rotateZ: 360, y: [0, -10, 0] }}
-                    transition={{ rotateZ: { duration: 18, repeat: Infinity, ease: "linear" }, y: { duration: 4, repeat: Infinity } }}
-                    className="absolute -bottom-5 -right-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/70 bg-white/70 text-blue-600 shadow-xl backdrop-blur-xl sm:-right-8"
-                    style={{ transform: "translateZ(160px)" }}
-                  >
-                    <HeartPulse size={28} />
-                  </motion.div>
-
-                  <motion.div
-                    animate={{ rotate: [0, 8, -8, 0], y: [0, -14, 0] }}
-                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute -left-3 bottom-40 hidden h-14 w-14 items-center justify-center rounded-2xl border border-white/70 bg-slate-950/90 text-cyan-300 shadow-2xl sm:flex"
-                    style={{ transform: "translateZ(150px)" }}
-                  >
-                    <Activity size={24} />
-                  </motion.div>
+                  <Heart
+                    size={24}
+                    fill="#f06f76"
+                    className="heartbeat absolute right-10 top-10 text-[#f06f76]"
+                  />
                 </motion.div>
-              </motion.div>
-            </div>
 
-            {/* Stats */}
-            <div className="mx-auto mt-16 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat value="10K+" label="Appointments" index={0} />
-              <Stat value="2K+" label="Providers" index={1} />
-              <Stat value="50+" label="Cities" index={2} />
-              <Stat value="24/7" label="Digital Access" index={3} />
+                {/* CONFIRMED CARD */}
+
+                <FloatingCard
+                  delay={0.2}
+                  duration={4.2}
+                  className="right-0 top-16 z-20 sm:right-1"
+                >
+                  <div className="flex w-[205px] items-center gap-3 rounded-2xl border border-white/80 bg-white/95 p-4 shadow-[0_20px_50px_-20px_rgba(20,80,100,.3)] backdrop-blur-xl">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#e7f7f4] text-[#10a79b]">
+                      <Check size={21} />
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-extrabold text-[#244f69]">
+                        Appointment Confirmed
+                      </p>
+
+                      <p className="mt-1 text-[10px] text-[#8aa0b0]">
+                        Your doctor is ready
+                      </p>
+                    </div>
+                  </div>
+                </FloatingCard>
+
+                {/* CONNECTED CARE */}
+
+                <FloatingCard
+                  delay={0.8}
+                  duration={4.7}
+                  className="bottom-24 left-0 z-20"
+                >
+                  <div className="flex w-[190px] items-center gap-3 rounded-2xl border border-white/80 bg-white/95 p-4 shadow-[0_20px_50px_-20px_rgba(20,80,100,.3)] backdrop-blur-xl">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf8f7] text-[#10a79b]">
+                      <Hospital size={18} />
+                    </div>
+
+                    <div>
+                      <p className="text-[11px] font-extrabold text-[#244f69]">
+                        Connected Care
+                      </p>
+
+                      <p className="mt-1 text-[10px] text-[#8aa0b0]">
+                        Hospitals & doctors
+                      </p>
+                    </div>
+                  </div>
+                </FloatingCard>
+
+                {/* PLUS BUTTON */}
+
+                <motion.div
+                  animate={{
+                    y: [0, -7, 0],
+                    rotate: [0, 4, 0],
+                  }}
+                  transition={{
+                    duration: 3.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="absolute bottom-[80px] left-[30%] z-20 hidden h-12 w-12 items-center justify-center rounded-2xl bg-[#10a79b] text-white shadow-xl shadow-[#10a79b]/30 sm:flex"
+                >
+                  <span className="text-2xl font-light">+</span>
+                </motion.div>
+
+                {/* LIVE STATUS */}
+
+                <FloatingCard
+                  delay={1}
+                  duration={5}
+                  className="bottom-6 right-0 z-20"
+                >
+                  <div className="rounded-2xl border border-white/80 bg-white/95 p-4 shadow-xl backdrop-blur-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#10a79b]" />
+                      <span className="text-[10px] font-extrabold text-[#244f69]">
+                        LIVE AVAILABILITY
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-sm font-black text-[#173b5c]">
+                      12 doctors available
+                    </p>
+                  </div>
+                </FloatingCard>
+
+                {/* DECORATIVE DOTS */}
+
+                <div className="absolute left-8 top-24 h-3 w-3 rounded-full bg-[#10a79b]/60" />
+                <div className="absolute bottom-28 right-20 h-2.5 w-2.5 rounded-full bg-[#f07b83]/70" />
+                <div className="absolute right-10 top-40 h-2 w-2 rounded-full bg-[#6c8de7]/60" />
+              </div>
             </div>
           </div>
         </section>
 
-        {/* SEARCH RESULTS */}
+        {/* =====================================================
+            SEARCH RESULTS
+        ===================================================== */}
+
         {searched && (
-          <section className="bg-slate-50 px-5 py-16 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-5xl">
+          <section className="border-b border-[#e9eeee] bg-[#f8fbfb] px-5 py-16 sm:px-8 lg:px-12">
+            <div className="mx-auto max-w-6xl">
               <div className="mb-8">
-                <p className="text-xs font-black uppercase tracking-[.18em] text-blue-600">
-                  Search results
-                </p>
-                <h2 className="mt-2 text-3xl font-black">
-                  Doctors matching “{query}”
+                <span className="text-xs font-extrabold uppercase tracking-[.18em] text-[#10a79b]">
+                  Search Results
+                </span>
+
+                <h2 className="mt-3 font-serif text-3xl font-bold text-[#173b5c]">
+                  Doctors matching "{query}"
                 </h2>
               </div>
 
               {doctors.length === 0 ? (
-                <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-xl shadow-slate-200/30">
-                  <Stethoscope className="mx-auto text-slate-300" size={48} />
-                  <p className="mt-4 font-black text-slate-700">
-                    No verified doctors found.
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
+                <div className="rounded-3xl border border-[#e1ebed] bg-white p-12 text-center shadow-sm">
+                  <Stethoscope
+                    size={48}
+                    className="mx-auto text-[#a9c0c9]"
+                  />
+
+                  <h3 className="mt-4 font-bold text-[#244f69]">
+                    No verified doctors found
+                  </h3>
+
+                  <p className="mt-2 text-sm text-[#8297a6]">
                     Try another search or explore all doctors.
                   </p>
+
                   <Link
                     to="/explore"
-                    className="mt-6 inline-flex rounded-xl bg-blue-600 px-5 py-3 font-bold text-white"
+                    className="mt-6 inline-flex rounded-xl bg-[#10a79b] px-5 py-3 text-sm font-bold text-white"
                   >
                     Explore Doctors
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {doctors.map((doctor) => (
                     <motion.div
                       key={doctor._id}
-                      initial={{ opacity: 0, y: 18 }}
+                      initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="rounded-3xl border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/30 transition hover:-translate-y-1 hover:shadow-2xl sm:p-6"
+                      className="rounded-3xl border border-[#e2ebed] bg-white p-5 shadow-sm"
                     >
                       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-4">
@@ -916,19 +914,21 @@ function Home() {
                               className="h-16 w-16 rounded-2xl object-cover"
                             />
                           ) : (
-                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-xl font-black text-blue-600">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e5f7f4] text-xl font-black text-[#10a79b]">
                               {doctor.name?.[0]}
                             </div>
                           )}
 
                           <div>
-                            <h3 className="text-lg font-black">
+                            <h3 className="font-bold text-[#173b5c]">
                               Dr. {doctor.name}
                             </h3>
-                            <p className="mt-1 font-bold text-blue-600">
+
+                            <p className="mt-1 text-sm font-bold text-[#10a79b]">
                               {doctor.specialization}
                             </p>
-                            <p className="mt-1 text-sm text-slate-500">
+
+                            <p className="mt-1 text-xs text-[#8196a5]">
                               {doctor.qualification}
                             </p>
                           </div>
@@ -936,31 +936,40 @@ function Home() {
 
                         <Link
                           to={`/doctor/${doctor._id}`}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#123b5a] px-5 py-3 text-sm font-bold text-white"
                         >
                           View Profile
                           <ArrowRight size={16} />
                         </Link>
                       </div>
 
-                      <div className="mt-5 grid gap-3">
-                        {(doctor.chambers || []).map((centre) => (
-                          <div
-                            key={centre._id}
-                            className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-                          >
-                            <div className="flex gap-3">
-                              <MapPin size={19} className="mt-0.5 text-blue-600" />
-                              <div>
-                                <p className="font-bold">{centre.name}</p>
-                                <p className="mt-1 text-sm text-slate-500">
-                                  {centre.address}
-                                </p>
+                      {(doctor.chambers || []).length > 0 && (
+                        <div className="mt-5 space-y-2">
+                          {doctor.chambers.map((centre) => (
+                            <div
+                              key={centre._id}
+                              className="rounded-2xl bg-[#f6faf9] p-4"
+                            >
+                              <div className="flex gap-3">
+                                <MapPin
+                                  size={18}
+                                  className="mt-0.5 text-[#10a79b]"
+                                />
+
+                                <div>
+                                  <p className="text-sm font-bold text-[#244f69]">
+                                    {centre.name}
+                                  </p>
+
+                                  <p className="mt-1 text-xs text-[#8196a5]">
+                                    {centre.address}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   ))}
                 </div>
@@ -969,62 +978,208 @@ function Home() {
           </section>
         )}
 
-        {/* FEATURES */}
-        <section id="features" className="scroll-mt-20 bg-white py-24">
-          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 25 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              className="mx-auto max-w-3xl text-center"
-            >
-              <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-black uppercase tracking-[.15em] text-blue-600">
-                <Sparkles size={15} />
-                Next-generation care
-              </span>
-              <h2 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">
-                Everything healthcare
-                <span className="text-blue-600"> should feel like.</span>
-              </h2>
-              <p className="mt-5 leading-8 text-slate-600">
-                A connected digital experience for discovery, booking,
-                tracking and the journey around your appointment.
-              </p>
-            </motion.div>
+        {/* =====================================================
+            ABOUT
+        ===================================================== */}
+
+        <section
+          id="about"
+          className="scroll-mt-24 bg-white py-24"
+        >
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+            <div className="grid items-center gap-14 lg:grid-cols-2">
+              <div>
+                <SectionHeading
+                  eyebrow="About CareCube"
+                  title="Healthcare should feel simple."
+                  description="From finding the right doctor to walking out of the chamber, CareCube brings the important parts of the appointment journey together in one connected experience."
+                />
+
+                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-3xl border border-[#e4eeee] bg-[#f7fbfa] p-5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[#10a79b] shadow-sm">
+                      <Search size={20} />
+                    </div>
+
+                    <h3 className="mt-5 font-bold text-[#173b5c]">
+                      Find the right care
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-[#7c92a1]">
+                      Discover doctors and healthcare centres based on your
+                      needs.
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl border border-[#e4eeee] bg-[#f7fbfa] p-5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[#10a79b] shadow-sm">
+                      <CalendarDays size={20} />
+                    </div>
+
+                    <h3 className="mt-5 font-bold text-[#173b5c]">
+                      Book with confidence
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-[#7c92a1]">
+                      See available appointment options before you visit.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ABOUT VISUAL */}
+
+              <div className="relative mx-auto w-full max-w-[500px]">
+                <div className="absolute -inset-5 rounded-[40px] bg-[#dff7f4] blur-2xl" />
+
+                <div className="relative overflow-hidden rounded-[38px] border border-white bg-[#eaf9f7] p-6 shadow-[0_30px_80px_-30px_rgba(20,100,100,.25)]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-[#10a79b]">
+                        CareCube
+                      </p>
+
+                      <p className="mt-1 text-xl font-black text-[#173b5c]">
+                        Your care journey
+                      </p>
+                    </div>
+
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[#10a79b] shadow-sm">
+                      <HeartPulse size={21} />
+                    </div>
+                  </div>
+
+                  <div className="mt-7 rounded-3xl bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#9aadb8]">
+                          Appointment
+                        </p>
+
+                        <p className="mt-2 font-black text-[#173b5c]">
+                          Cardiology Consultation
+                        </p>
+                      </div>
+
+                      <span className="rounded-full bg-[#e5f8f4] px-3 py-1.5 text-[10px] font-extrabold text-[#10a79b]">
+                        CONFIRMED
+                      </span>
+                    </div>
+
+                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#edf3f3]">
+                      <motion.div
+                        animate={{
+                          width: ["35%", "78%", "55%", "82%"],
+                        }}
+                        transition={{
+                          duration: 6,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                        className="h-full rounded-full bg-[#10a79b]"
+                      />
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-3 gap-2">
+                      <div className="rounded-2xl bg-[#f7fbfa] p-3">
+                        <p className="text-[9px] text-[#9aadb8]">
+                          DOCTOR
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-[#244f69]">
+                          Dr. Rahul
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-[#f7fbfa] p-3">
+                        <p className="text-[9px] text-[#9aadb8]">
+                          TOKEN
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-[#244f69]">
+                          #{activeToken}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-[#f7fbfa] p-3">
+                        <p className="text-[9px] text-[#9aadb8]">
+                          STATUS
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-[#10a79b]">
+                          Live
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-white/80 p-4">
+                      <Check className="text-[#10a79b]" size={18} />
+                      <p className="mt-3 text-xs font-bold text-[#244f69]">
+                        Easy Booking
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/80 p-4">
+                      <Clock3 className="text-[#10a79b]" size={18} />
+                      <p className="mt-3 text-xs font-bold text-[#244f69]">
+                        Live Queue
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================
+            DEPARTMENTS
+        ===================================================== */}
+
+        <section
+          id="departments"
+          className="scroll-mt-24 bg-[#f7fbfa] py-24"
+        >
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+            <SectionHeading
+              eyebrow="Departments"
+              title="Care for every important need."
+              description="Explore healthcare specialties and find the right doctor for your appointment."
+              center
+            />
 
             <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {featureData.map((feature, index) => {
-                const Icon = feature.icon;
+              {departments.map((department, index) => {
+                const Icon = department.icon;
 
                 return (
                   <motion.div
-                    key={feature.title}
-                    initial={{ opacity: 0, y: 28, rotateX: 8 }}
-                    whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-                    viewport={{ once: true, amount: 0.2 }}
-                    transition={{ delay: index * 0.05, duration: 0.55 }}
-                    whileHover={{ y: -10, rotateX: 2, rotateY: -2 }}
-                    className="group relative overflow-hidden rounded-[30px] border border-slate-200 bg-white p-6 shadow-lg shadow-slate-100 transition hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-100/60"
-                    style={{ perspective: 900 }}
+                    key={department.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.08 }}
+                    whileHover={{ y: -7 }}
+                    className="group rounded-[28px] border border-[#e1eceb] bg-white p-6 shadow-sm transition hover:border-[#bde5e0] hover:shadow-xl hover:shadow-[#10a79b]/10"
                   >
-                    <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-blue-100/70 blur-3xl transition group-hover:bg-cyan-100/80" />
-                    <div className="relative">
-                      <div className="flex items-center justify-between">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600 shadow-inner transition group-hover:scale-110 group-hover:from-blue-600 group-hover:to-cyan-500 group-hover:text-white">
-                          <Icon size={24} />
-                        </div>
-                        <span className="text-xs font-black text-slate-200">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                      </div>
-                      <h3 className="mt-7 font-black text-slate-900">{feature.title}</h3>
-                      <p className="mt-3 text-sm leading-6 text-slate-500">
-                        {feature.text}
-                      </p>
-                      <div className="mt-6 h-px overflow-hidden bg-slate-100">
-                        <div className="h-full w-1/3 -translate-x-full bg-gradient-to-r from-blue-600 to-cyan-400 transition duration-700 group-hover:translate-x-[250%]" />
-                      </div>
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e8f8f6] text-[#10a79b] transition group-hover:bg-[#10a79b] group-hover:text-white">
+                      <Icon size={25} />
                     </div>
+
+                    <h3 className="mt-6 font-bold text-[#173b5c]">
+                      {department.title}
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-[#7d93a2]">
+                      {department.text}
+                    </p>
+
+                    <Link
+                      to="/explore"
+                      className="mt-5 inline-flex items-center gap-1 text-xs font-extrabold text-[#10a79b]"
+                    >
+                      Find Doctors
+                      <ArrowRight size={14} />
+                    </Link>
                   </motion.div>
                 );
               })}
@@ -1032,309 +1187,368 @@ function Home() {
           </div>
         </section>
 
-        {/* FEATURED DOCTORS */}
-        <section className="relative overflow-hidden bg-slate-50 py-24">
-          <FloatingOrb className="-right-40 top-0 h-80 w-80 bg-blue-300/20" duration={10} />
-          <div className="relative">
-            <FeaturedDoctors />
-          </div>
-        </section>
+        {/* =====================================================
+            SERVICES
+        ===================================================== */}
 
-        {/* LIVE QUEUE */}
-        <section id="live-queue" className="scroll-mt-20 relative overflow-hidden bg-slate-950 py-24 text-white">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,.28),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(6,182,212,.18),transparent_35%)]" />
-          <div className="cc-grid absolute inset-0 opacity-20" />
+        <section
+          id="services"
+          className="scroll-mt-24 bg-white py-24"
+        >
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+            <div className="grid gap-14 lg:grid-cols-[.75fr_1.25fr]">
+              <SectionHeading
+                eyebrow="Our Services"
+                title="A better appointment experience."
+                description="CareCube brings together the digital steps around your healthcare visit."
+              />
 
-          <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-14 lg:grid-cols-[.85fr_1.15fr]">
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-              >
-                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[.16em] text-cyan-300">
-                  <Activity size={14} />
-                  Live appointment engine
-                </span>
-                <h2 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                  Stop waiting
-                  <span className="block text-cyan-300">blindly.</span>
-                </h2>
-                <p className="mt-6 max-w-xl text-base leading-8 text-slate-400 sm:text-lg">
-                  Know what's happening before you reach the chamber. CareCube
-                  turns an appointment into a visible, trackable journey.
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {services.map((service, index) => {
+                  const Icon = service.icon;
 
-                <div className="mt-8 grid grid-cols-2 gap-3">
-                  {[
-                    ["Now consulting", "Dr. Rahul Kumar"],
-                    ["Your token", "#23"],
-                    ["Ahead", "5 patients"],
-                    ["Estimated", "18 minutes"],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="rounded-2xl border border-white/10 bg-white/[.04] p-4 backdrop-blur"
-                    >
-                      <p className="text-[9px] font-black uppercase tracking-[.16em] text-slate-500">
-                        {label}
-                      </p>
-                      <p className="mt-2 font-black text-white">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.94, x: 30 }}
-                whileInView={{ opacity: 1, scale: 1, x: 0 }}
-                viewport={{ once: true }}
-                className="relative"
-              >
-                <div className="absolute -inset-10 rounded-[50px] bg-blue-500/15 blur-3xl" />
-
-                <div className="relative overflow-hidden rounded-[34px] border border-white/10 bg-white/[.06] p-5 shadow-2xl backdrop-blur-xl sm:p-7">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-5">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-300">
-                        Chamber command centre
-                      </p>
-                      <p className="mt-1 text-lg font-black">Cardiology OPD</p>
-                    </div>
-                    <span className="flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-300">
-                      <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                      LIVE
-                    </span>
-                  </div>
-
-                  <div className="mt-7 rounded-3xl border border-white/10 bg-slate-950/60 p-5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">CURRENTLY CONSULTING</span>
-                      <span className="text-xs font-black text-cyan-300">TOKEN #{activeToken}</span>
-                    </div>
-
-                    <div className="mt-5 flex items-center gap-4">
-                      <div className="h-14 w-14 overflow-hidden rounded-2xl border border-white/10">
-                        <img
-                          src={medicalImages.hero}
-                          alt="Doctor"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div>
-                        <p className="font-black">Dr. Rahul Kumar</p>
-                        <p className="text-sm text-slate-500">Cardiologist</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-7">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-500">QUEUE PROGRESS</span>
-                        <span className="font-black text-cyan-300">72%</span>
-                      </div>
-                      <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/5">
-                        <motion.div
-                          animate={{ width: ["55%", "72%", "62%", "72%"] }}
-                          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-                          className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex items-center gap-2 overflow-hidden">
-                    {[18, 19, 20, 21, 22, 23].map((token) => (
-                      <motion.div
-                        key={token}
-                        animate={{
-                          scale: activeToken === token ? 1.12 : 1,
-                          y: activeToken === token ? -6 : 0,
-                        }}
-                        className={`flex h-11 min-w-11 items-center justify-center rounded-xl border text-xs font-black ${
-                          activeToken === token
-                            ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-300 shadow-[0_0_30px_rgba(34,211,238,.2)]"
-                            : "border-white/10 bg-white/[.03] text-slate-500"
-                        }`}
-                      >
-                        #{token}
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <div className="mt-7 overflow-hidden rounded-2xl border border-white/5 bg-black/20 px-4 py-3">
+                  return (
                     <motion.div
-                      animate={{ x: ["-20%", "20%", "-20%"] }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                      className="cc-wave h-8 w-[140%]"
+                      key={service.title}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.08 }}
+                      className="rounded-3xl border border-[#e4eeee] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-[#bfe6e1] hover:shadow-lg"
                     >
-                      <svg viewBox="0 0 500 40" className="h-full w-full">
-                        <path
-                          d="M0 22 H80 L95 22 L105 5 L117 34 L130 22 H190 L205 22 L215 12 L225 30 L237 22 H320 L335 22 L347 2 L360 37 L372 22 H500"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="text-cyan-300"
-                        />
-                      </svg>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e8f8f6] text-[#10a79b]">
+                        <Icon size={21} />
+                      </div>
+
+                      <h3 className="mt-5 font-bold text-[#173b5c]">
+                        {service.title}
+                      </h3>
+
+                      <p className="mt-2 text-sm leading-6 text-[#7d93a2]">
+                        {service.text}
+                      </p>
                     </motion.div>
-                  </div>
-
-                  <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                    {["Doctor consulting", "Queue moving", "Appointment confirmed"].map(
-                      (status) => (
-                        <div
-                          key={status}
-                          className="flex items-center gap-2 rounded-xl bg-white/[.04] px-3 py-2 text-xs font-bold text-slate-400"
-                        >
-                          <Check size={14} className="text-emerald-400" />
-                          {status}
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* HOW IT WORKS */}
-        <section id="how-it-works" className="scroll-mt-20 bg-white py-24">
-          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <div className="max-w-3xl">
-              <span className="text-xs font-black uppercase tracking-[.18em] text-blue-600">
-                The CareCube journey
-              </span>
-              <h2 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl">
-                From search to chamber,
-                <span className="text-blue-600"> connected.</span>
-              </h2>
-              <p className="mt-5 leading-8 text-slate-600">
-                A simple sequence with a modern digital layer around the
-                healthcare visit.
-              </p>
-            </div>
-
-            <div className="relative mt-16">
-              <div className="absolute left-[8%] right-[8%] top-9 hidden h-px bg-gradient-to-r from-blue-100 via-blue-500 to-cyan-300 lg:block" />
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-6">
-                {journeySteps.map(([number, Icon, title, text], index) => (
-                  <motion.div
-                    key={number}
-                    initial={{ opacity: 0, y: 25 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ delay: index * 0.08 }}
-                    className="relative text-center"
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.08, rotate: 4 }}
-                      className="relative z-10 mx-auto flex h-[74px] w-[74px] items-center justify-center rounded-3xl border border-blue-100 bg-white text-blue-600 shadow-xl shadow-blue-100/60"
-                    >
-                      <Icon size={25} />
-                      <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-[9px] font-black text-white">
-                        {number}
-                      </span>
-                    </motion.div>
-                    <h3 className="mt-5 font-black">{title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">{text}</p>
-                  </motion.div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
         </section>
 
-        {/* QR + PHONE */}
-        <section className="overflow-hidden bg-slate-50 py-24">
-          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-14 lg:grid-cols-2">
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
+        {/* =====================================================
+            FEATURED DOCTORS
+        ===================================================== */}
+
+        <section className="bg-[#f7fbfa] py-24">
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+            <div className="mb-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <SectionHeading
+                eyebrow="Our Doctors"
+                title="Meet trusted doctors."
+                description="Discover selected doctors available through the CareCube network."
+              />
+
+              <Link
+                to="/explore"
+                className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-[#cfe3e4] bg-white px-5 py-3 text-sm font-bold text-[#244f69] transition hover:border-[#10a79b] hover:text-[#10a79b]"
               >
-                <span className="text-xs font-black uppercase tracking-[.18em] text-blue-600">
-                  QR booking
+                Explore All Doctors
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <FeaturedDoctors />
+          </div>
+        </section>
+
+        {/* =====================================================
+            LIVE QUEUE
+        ===================================================== */}
+
+        <section
+          id="how-it-works"
+          className="scroll-mt-24 overflow-hidden bg-[#123b5a] py-24 text-white"
+        >
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+            <div className="grid items-center gap-14 lg:grid-cols-2">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-[.2em] text-[#72d8ce]">
+                  Live Appointment Tracking
                 </span>
-                <h2 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl">
+
+                <h2 className="mt-5 font-serif text-4xl font-bold leading-tight sm:text-5xl">
+                  Don't wait without knowing.
+                </h2>
+
+                <p className="mt-6 max-w-xl leading-8 text-[#a8bdca]">
+                  CareCube helps you follow the appointment journey so you
+                  have a clearer idea of what is happening at the chamber.
+                </p>
+
+                <div className="mt-8 grid grid-cols-2 gap-3">
+                  {[
+                    ["Now Consulting", "Dr. Rahul Kumar"],
+                    ["Your Token", `#${activeToken}`],
+                    ["Ahead", "5 patients"],
+                    ["Estimated", "18 minutes"],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="rounded-2xl border border-white/10 bg-white/[.06] p-4"
+                    >
+                      <p className="text-[9px] font-extrabold uppercase tracking-[.15em] text-[#6f8b9d]">
+                        {label}
+                      </p>
+
+                      <p className="mt-2 text-sm font-bold text-white">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* QUEUE CARD */}
+
+              <div className="relative">
+                <div className="absolute -inset-10 rounded-full bg-[#10a79b]/20 blur-3xl" />
+
+                <div className="relative rounded-[32px] border border-white/10 bg-white/[.07] p-5 shadow-2xl backdrop-blur-xl sm:p-7">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-5">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-[#72d8ce]">
+                        Chamber Command Centre
+                      </p>
+
+                      <p className="mt-1 text-lg font-black">
+                        Cardiology OPD
+                      </p>
+                    </div>
+
+                    <span className="flex items-center gap-2 rounded-full bg-[#10a79b]/15 px-3 py-2 text-xs font-bold text-[#72d8ce]">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-[#5ce1d5]" />
+                      LIVE
+                    </span>
+                  </div>
+
+                  <div className="mt-6 rounded-3xl bg-[#09283f] p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-[#688398]">
+                        CURRENTLY CONSULTING
+                      </span>
+
+                      <span className="text-xs font-black text-[#72d8ce]">
+                        TOKEN #{activeToken}
+                      </span>
+                    </div>
+
+                    <div className="mt-5 flex items-center gap-4">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#10a79b]/15 text-[#72d8ce]">
+                        <Stethoscope size={25} />
+                      </div>
+
+                      <div>
+                        <p className="font-black">
+                          Dr. Rahul Kumar
+                        </p>
+
+                        <p className="text-sm text-[#708a9d]">
+                          Cardiologist
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-7">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-[#6c8496]">
+                          QUEUE PROGRESS
+                        </span>
+
+                        <span className="font-black text-[#72d8ce]">
+                          72%
+                        </span>
+                      </div>
+
+                      <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
+                        <motion.div
+                          animate={{
+                            width: ["50%", "72%", "61%", "72%"],
+                          }}
+                          transition={{
+                            duration: 6,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                          className="h-full rounded-full bg-[#10a79b]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex gap-2 overflow-hidden">
+                    {[18, 19, 20, 21, 22, 23, 24].map(
+                      (token) => (
+                        <motion.div
+                          key={token}
+                          animate={{
+                            scale:
+                              activeToken === token ? 1.1 : 1,
+                            y:
+                              activeToken === token ? -4 : 0,
+                          }}
+                          className={`flex h-10 min-w-10 items-center justify-center rounded-xl border text-xs font-black ${
+                            activeToken === token
+                              ? "border-[#72d8ce]/40 bg-[#10a79b]/20 text-[#72d8ce]"
+                              : "border-white/10 bg-white/[.03] text-[#657e90]"
+                          }`}
+                        >
+                          #{token}
+                        </motion.div>
+                      )
+                    )}
+                  </div>
+
+                  <div className="mt-6 grid gap-2 sm:grid-cols-3">
+                    {[
+                      "Doctor consulting",
+                      "Queue moving",
+                      "Appointment confirmed",
+                    ].map((status) => (
+                      <div
+                        key={status}
+                        className="flex items-center gap-2 rounded-xl bg-white/[.04] px-3 py-2 text-xs font-bold text-[#8197a7]"
+                      >
+                        <Check
+                          size={14}
+                          className="text-[#72d8ce]"
+                        />
+
+                        {status}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================
+            QR BOOKING
+        ===================================================== */}
+
+        <section className="bg-white py-24">
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+            <div className="grid items-center gap-16 lg:grid-cols-2">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-[.2em] text-[#10a79b]">
+                  QR Booking
+                </span>
+
+                <h2 className="mt-5 font-serif text-4xl font-bold leading-tight text-[#173b5c] sm:text-5xl">
                   Scan.
-                  <span className="text-blue-600"> Book.</span>
+                  <span className="text-[#10a79b]"> Book.</span>
                   <br />
                   Track.
                 </h2>
-                <p className="mt-6 max-w-xl leading-8 text-slate-600">
-                  See a CareCube QR at a participating healthcare centre? Scan
-                  it and continue your appointment journey from your phone.
+
+                <p className="mt-6 max-w-xl leading-8 text-[#71889a]">
+                  See a CareCube QR code at a participating healthcare
+                  centre? Scan it and continue your appointment journey
+                  from your phone.
                 </p>
 
-                <div className="mt-8 flex flex-wrap gap-3">
-                  {["Scan QR", "Select Doctor", "Choose Slot", "Track Queue"].map(
-                    (item, i) => (
-                      <div
-                        key={item}
-                        className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold shadow-sm"
-                      >
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                          {i + 1}
-                        </span>
-                        {item}
-                      </div>
-                    )
-                  )}
-                </div>
-              </motion.div>
+                <div className="mt-8 flex flex-wrap gap-2">
+                  {[
+                    "Scan QR",
+                    "Select Doctor",
+                    "Choose Slot",
+                    "Track Queue",
+                  ].map((item, index) => (
+                    <div
+                      key={item}
+                      className="flex items-center gap-2 rounded-full border border-[#e0ebeb] bg-[#f9fcfb] px-4 py-2.5 text-xs font-bold text-[#516b82]"
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#e6f8f5] text-[10px] text-[#10a79b]">
+                        {index + 1}
+                      </span>
 
-              <div className="relative mx-auto h-[540px] w-full max-w-md">
-                <div className="absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/20 blur-3xl" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* PHONE */}
+
+              <div className="relative mx-auto h-[500px] w-full max-w-[350px]">
+                <div className="absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#dff7f4] blur-3xl" />
 
                 <motion.div
-                  initial={{ opacity: 0, y: 40, rotateY: -12 }}
-                  whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.8 }}
-                  whileHover={{ rotateY: 5, rotateX: -2, y: -8 }}
-                  className="absolute left-1/2 top-1/2 h-[500px] w-[260px] -translate-x-1/2 -translate-y-1/2 rounded-[42px] border-[8px] border-slate-900 bg-slate-950 p-2 shadow-[0_40px_100px_-30px_rgba(15,23,42,.55)]"
-                  style={{ perspective: 1000 }}
+                  initial={{
+                    opacity: 0,
+                    y: 40,
+                  }}
+                  whileInView={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  viewport={{
+                    once: true,
+                  }}
+                  transition={{
+                    duration: 0.8,
+                  }}
+                  className="absolute left-1/2 top-1/2 h-[480px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-[40px] border-[7px] border-[#173b5c] bg-[#173b5c] p-2 shadow-[0_40px_100px_-30px_rgba(20,70,90,.45)]"
                 >
-                  <div className="relative h-full overflow-hidden rounded-[32px] bg-gradient-to-b from-blue-50 to-white">
-                    <div className="mx-auto mt-3 h-5 w-24 rounded-full bg-slate-900" />
+                  <div className="relative h-full overflow-hidden rounded-[31px] bg-[#f7fbfa]">
+                    <div className="mx-auto mt-3 h-5 w-24 rounded-full bg-[#173b5c]" />
+
                     <div className="p-5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-[.16em] text-blue-600">
+                          <p className="text-[9px] font-extrabold uppercase tracking-[.15em] text-[#10a79b]">
                             CareCube
                           </p>
-                          <p className="mt-1 text-lg font-black">Book visit</p>
+
+                          <p className="mt-1 text-lg font-black text-[#173b5c]">
+                            Book visit
+                          </p>
                         </div>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
+
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10a79b] text-white">
                           <QrCode size={18} />
                         </div>
                       </div>
 
-                      <div className="mt-7 rounded-3xl bg-slate-950 p-5 text-white">
+                      {/* QR */}
+
+                      <div className="mt-6 rounded-3xl bg-[#173b5c] p-5">
                         <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-2xl bg-white p-3">
                           <div className="grid h-full w-full grid-cols-7 gap-1">
-                            {Array.from({ length: 49 }).map((_, i) => (
+                            {Array.from({
+                              length: 49,
+                            }).map((_, index) => (
                               <span
-                                key={i}
+                                key={index}
                                 className={
-                                  (i * 13) % 7 < 3 ||
-                                  i % 11 === 0 ||
-                                  i % 5 === 0
-                                    ? "rounded-[2px] bg-slate-950"
+                                  (index * 13) % 7 < 3 ||
+                                  index % 11 === 0 ||
+                                  index % 5 === 0
+                                    ? "rounded-[2px] bg-[#173b5c]"
                                     : "rounded-[2px] bg-white"
                                 }
                               />
                             ))}
                           </div>
                         </div>
-                        <p className="mt-4 text-center text-xs font-bold text-slate-400">
+
+                        <p className="mt-4 text-center text-xs font-bold text-[#91a8b7]">
                           Scan to continue
                         </p>
                       </div>
 
-                      <div className="mt-5 space-y-3">
+                      <div className="mt-5 space-y-2">
                         {[
                           ["Doctor", "Dr. Ananya Sharma"],
                           ["Specialty", "Cardiology"],
@@ -1342,12 +1556,15 @@ function Home() {
                         ].map(([label, value]) => (
                           <div
                             key={label}
-                            className="rounded-2xl border border-slate-100 bg-white p-3"
+                            className="rounded-2xl border border-[#e4eeee] bg-white p-3"
                           >
-                            <p className="text-[9px] font-black uppercase tracking-[.12em] text-slate-400">
+                            <p className="text-[8px] font-extrabold uppercase tracking-[.12em] text-[#9aadb8]">
                               {label}
                             </p>
-                            <p className="mt-1 text-xs font-black text-slate-800">{value}</p>
+
+                            <p className="mt-1 text-xs font-black text-[#244f69]">
+                              {value}
+                            </p>
                           </div>
                         ))}
                       </div>
@@ -1359,343 +1576,184 @@ function Home() {
           </div>
         </section>
 
-        {/* AI SEARCH */}
-        <section className="relative overflow-hidden bg-slate-950 py-24 text-white">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(37,99,235,.22),transparent_32%),radial-gradient(circle_at_80%_80%,rgba(6,182,212,.15),transparent_28%)]" />
-          <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-14 lg:grid-cols-[.85fr_1.15fr]">
-              <div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-400/10 px-4 py-2 text-xs font-black uppercase tracking-[.16em] text-blue-300">
-                  <Brain size={14} />
-                  AI healthcare search
-                </span>
-                <h2 className="mt-6 text-4xl font-black sm:text-5xl">
-                  Healthcare search,
-                  <span className="block text-cyan-300">powered by intelligence.</span>
-                </h2>
-                <p className="mt-6 max-w-xl leading-8 text-slate-400">
-                  Describe the provider or service you are looking for and use
-                  CareCube to navigate available healthcare options.
-                </p>
-                <p className="mt-5 text-xs leading-6 text-slate-500">
-                  AI features should support healthcare discovery and navigation;
-                  they are not a medical diagnosis service.
-                </p>
-              </div>
+        {/* =====================================================
+            REVIEWS
+        ===================================================== */}
 
-              <div className="relative">
-                <div className="absolute -inset-10 rounded-[50px] bg-blue-500/15 blur-3xl" />
+        <section className="bg-[#f7fbfa] py-24">
+          <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+            <SectionHeading
+              eyebrow="Patient Stories"
+              title="Real people. Real experiences."
+              description="See what patients say about their healthcare journey."
+              center
+            />
 
-                <div className="relative rounded-[34px] border border-white/10 bg-white/[.06] p-5 shadow-2xl backdrop-blur-xl sm:p-7">
-                  <div className="flex items-center gap-3 border-b border-white/10 pb-5">
-                    <div className="cc-pulse flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/20">
-                      <Sparkles size={22} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black">CareCube Intelligence</p>
-                      <p className="text-xs text-slate-500">Healthcare discovery assistant</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 rounded-3xl bg-white/[.05] p-4">
-                    <p className="text-[9px] font-black uppercase tracking-[.15em] text-slate-500">
-                      You
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-200">
-                      “I need a cardiologist near me tomorrow evening.”
-                    </p>
-                  </div>
-
-                  <div className="ml-8 mt-4 rounded-3xl border border-cyan-400/10 bg-cyan-400/[.04] p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-300" />
-                      <p className="text-[9px] font-black uppercase tracking-[.15em] text-cyan-300">
-                        CareCube
-                      </p>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold text-slate-300">
-                      Here are healthcare providers matching your search.
-                    </p>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    {[
-                      ["Dr. Ananya", "Cardiologist", "Tomorrow • 6:00 PM"],
-                      ["Dr. Rahul", "Cardiologist", "Tomorrow • 6:30 PM"],
-                      ["Dr. Priya", "Cardiologist", "Tomorrow • 7:00 PM"],
-                    ].map(([name, specialty, slot], i) => (
-                      <motion.div
-                        key={name}
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: i * 0.12 }}
-                        className="rounded-2xl border border-white/10 bg-white/[.04] p-3"
-                      >
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
-                          <Stethoscope size={17} />
-                        </div>
-                        <p className="mt-3 text-xs font-black">{name}</p>
-                        <p className="mt-1 text-[10px] text-slate-500">{specialty}</p>
-                        <p className="mt-3 text-[10px] font-bold text-cyan-300">{slot}</p>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="mt-12">
+              <ReviewsSection />
             </div>
           </div>
         </section>
 
-        {/* REAL IMAGE GALLERY */}
-        <section id="why-carecube" className="scroll-mt-20 bg-white py-24">
-          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <div className="grid items-end gap-6 md:grid-cols-2">
-              <div>
-                <span className="text-xs font-black uppercase tracking-[.18em] text-blue-600">
-                  Real healthcare
-                </span>
-                <h2 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl">
-                  Designed around
-                  <span className="text-blue-600"> real people.</span>
-                </h2>
-              </div>
-              <p className="max-w-xl leading-8 text-slate-600 md:justify-self-end">
-                CareCube brings a human, visual layer to a traditionally
-                fragmented appointment experience.
-              </p>
-            </div>
+        {/* =====================================================
+            FAQ
+        ===================================================== */}
 
-            <div className="mt-12 grid gap-4 md:grid-cols-12 md:grid-rows-2">
-              <motion.figure
-                initial={{ opacity: 0, scale: .96 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                className="group relative min-h-[300px] overflow-hidden rounded-[30px] md:col-span-7 md:row-span-2"
-              >
-                <img
-                  src={medicalImages.consultation}
-                  alt={imageAlt.consultation}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-1000 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
-                <figcaption className="absolute bottom-0 p-7 text-white">
-                  <p className="text-xs font-black uppercase tracking-[.16em] text-blue-200">
-                    Consultation
-                  </p>
-                  <p className="mt-2 text-2xl font-black">Technology that stays human.</p>
-                </figcaption>
-              </motion.figure>
-
-              {[
-                [medicalImages.hospital, imageAlt.hospital, "Modern centres"],
-                [medicalImages.tablet, imageAlt.tablet, "Digital care"],
-                [medicalImages.patient, imageAlt.patient, "Patient journey"],
-                [medicalImages.team, imageAlt.team, "Healthcare teams"],
-              ].map(([src, alt, title], i) => (
-                <motion.figure
-                  key={title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.08 }}
-                  className="group relative min-h-[190px] overflow-hidden rounded-[28px] md:col-span-5"
-                >
-                  <img
-                    src={src}
-                    alt={alt}
-                    className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent" />
-                  <figcaption className="absolute bottom-0 p-5 text-sm font-black text-white">
-                    {title}
-                  </figcaption>
-                </motion.figure>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="px-5 py-8 sm:px-6 lg:px-8">
-          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[42px] bg-slate-950 px-7 py-16 text-white shadow-2xl sm:px-12 lg:px-20 lg:py-24">
-            <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-blue-600/25 blur-3xl" />
-            <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl" />
-            <div className="cc-grid absolute inset-0 opacity-20" />
-
-            <div className="relative grid items-center gap-12 lg:grid-cols-[1.2fr_.8fr]">
-              <div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.06] px-4 py-2 text-xs font-black uppercase tracking-[.16em] text-cyan-300">
-                  <Zap size={14} />
-                  Faster. Simpler. Connected.
-                </span>
-                <h2 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                  Your healthcare journey
-                  <span className="block text-cyan-300">starts here.</span>
-                </h2>
-                <p className="mt-6 max-w-xl leading-8 text-slate-400">
-                  Find. Book. Track. Visit. CareCube connects the important
-                  digital steps around your appointment.
-                </p>
-
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    to="/explore"
-                    className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-7 py-4 font-black text-white transition hover:-translate-y-1 hover:bg-blue-500"
-                  >
-                    Find a Doctor
-                    <ArrowRight size={18} className="transition group-hover:translate-x-1" />
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[.05] px-7 py-4 font-black text-white transition hover:-translate-y-1 hover:bg-white/10"
-                  >
-                    Register Your Centre
-                  </Link>
-                </div>
-              </div>
-
-              <div className="relative mx-auto grid w-full max-w-sm grid-cols-2 gap-3">
-                {[
-                  [Search, "Find"],
-                  [CalendarDays, "Book"],
-                  [Activity, "Track"],
-                  [CreditCard, "Complete"],
-                ].map(([Icon, label], i) => (
-                  <motion.div
-                    key={label}
-                    animate={{ y: [0, i % 2 ? 8 : -8, 0] }}
-                    transition={{ duration: 3.5 + i * .3, repeat: Infinity, ease: "easeInOut" }}
-                    whileHover={{ scale: 1.04 }}
-                    className="rounded-3xl border border-white/10 bg-white/[.06] p-6 backdrop-blur-xl"
-                  >
-                    <Icon size={25} className="text-cyan-300" />
-                    <p className="mt-5 font-black">{label}</p>
-                    <p className="mt-1 text-xs text-slate-500">CareCube journey</p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* REVIEWS */}
-        <section className="relative overflow-hidden bg-slate-50 py-24">
-          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <div className="mx-auto mb-10 max-w-2xl text-center">
-              <span className="text-xs font-black uppercase tracking-[.18em] text-blue-600">
-                Patient stories
-              </span>
-              <h2 className="mt-4 text-4xl font-black">Real people. Real experiences.</h2>
-              <p className="mt-4 text-slate-500">
-                Reviews remain swipeable and compact so the homepage stays easy to scan.
-              </p>
-            </div>
-            <ReviewsSection />
-          </div>
-        </section>
-
-        {/* FAQ */}
         <section className="bg-white py-24">
-          <div className="mx-auto max-w-3xl px-5 sm:px-6">
-            <div className="text-center">
-              <span className="text-xs font-black uppercase tracking-[.18em] text-blue-600">
-                FAQs
-              </span>
-              <h2 className="mt-5 text-4xl font-black sm:text-5xl">
-                Questions, answered.
-              </h2>
-              <p className="mt-4 text-slate-500">
-                A quick guide to the CareCube experience.
-              </p>
-            </div>
+          <div className="mx-auto max-w-3xl px-5 sm:px-8">
+            <SectionHeading
+              eyebrow="FAQs"
+              title="Questions, answered."
+              description="A quick guide to the CareCube experience."
+              center
+            />
 
             <div className="mt-12 space-y-3">
               {faqData.map((faq, index) => {
                 const isOpen = openFaq === index;
 
                 return (
-                  <motion.div
+                  <div
                     key={faq.question}
-                    layout
                     className={`overflow-hidden rounded-3xl border transition ${
                       isOpen
-                        ? "border-blue-200 bg-blue-50/50 shadow-lg shadow-blue-100/40"
-                        : "border-slate-200 bg-white"
+                        ? "border-[#bfe6e1] bg-[#f1fbf9]"
+                        : "border-[#e3ecee] bg-white"
                     }`}
                   >
                     <button
                       type="button"
-                      onClick={() => setOpenFaq(isOpen ? -1 : index)}
+                      onClick={() =>
+                        setOpenFaq(isOpen ? -1 : index)
+                      }
                       className="flex w-full items-center justify-between gap-5 px-5 py-5 text-left sm:px-6"
                     >
-                      <span className="font-black text-slate-900">{faq.question}</span>
+                      <span className="font-bold text-[#173b5c]">
+                        {faq.question}
+                      </span>
+
                       <ChevronDown
                         size={20}
-                        className={`shrink-0 text-slate-400 transition ${
-                          isOpen ? "rotate-180 text-blue-600" : ""
+                        className={`shrink-0 transition ${
+                          isOpen
+                            ? "rotate-180 text-[#10a79b]"
+                            : "text-[#8ba0ad]"
                         }`}
                       />
                     </button>
 
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        height: isOpen ? "auto" : 0,
-                        opacity: isOpen ? 1 : 0,
-                      }}
-                      className="overflow-hidden"
-                    >
-                      <p className="px-5 pb-6 text-sm leading-7 text-slate-600 sm:px-6">
-                        {faq.answer}
-                      </p>
-                    </motion.div>
-                  </motion.div>
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{
+                            height: 0,
+                            opacity: 0,
+                          }}
+                          animate={{
+                            height: "auto",
+                            opacity: 1,
+                          }}
+                          exit={{
+                            height: 0,
+                            opacity: 0,
+                          }}
+                        >
+                          <p className="px-5 pb-6 text-sm leading-7 text-[#6f8798] sm:px-6">
+                            {faq.answer}
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 );
               })}
             </div>
           </div>
         </section>
 
-        {/* CONTACT */}
-        <section className="bg-slate-50 px-5 py-24 sm:px-6">
-          <div className="mx-auto max-w-5xl text-center">
-            <motion.div
-              initial={{ opacity: 0, scale: .9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-2xl shadow-blue-600/25"
-            >
-              <HeartPulse size={29} />
-            </motion.div>
+        {/* =====================================================
+            CONTACT / CTA
+        ===================================================== */}
 
-            <p className="mt-6 text-xs font-black uppercase tracking-[.18em] text-blue-600">
-              Get in touch
-            </p>
+        <section
+          id="contact"
+          className="scroll-mt-24 bg-[#f7fbfa] px-5 py-20 sm:px-8 lg:px-12"
+        >
+          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[40px] bg-[#123b5a] px-7 py-16 text-center shadow-2xl sm:px-12 lg:px-20">
+            <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-[#10a79b]/20 blur-3xl" />
 
-            <h2 className="mt-4 text-4xl font-black sm:text-5xl">
-              Let's make healthcare
-              <span className="text-blue-600"> simpler together.</span>
-            </h2>
+            <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-[#58d6cd]/10 blur-3xl" />
 
-            <p className="mx-auto mt-5 max-w-2xl leading-7 text-slate-600">
-              Have a question, suggestion or want to partner with CareCube?
-              We would love to hear from you.
-            </p>
+            <div className="relative mx-auto max-w-3xl">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#10a79b] text-white shadow-xl shadow-[#10a79b]/20">
+                <HeartPulse size={29} />
+              </div>
 
-            <a
-              href="mailto:hello@carecube.com"
-              className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-7 py-4 font-black text-white shadow-xl transition hover:-translate-y-1 hover:bg-blue-600"
-            >
-              Send Message
-              <ArrowRight size={18} />
-            </a>
+              <p className="mt-6 text-xs font-extrabold uppercase tracking-[.2em] text-[#72d8ce]">
+                Get in touch
+              </p>
+
+              <h2 className="mt-4 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl">
+                Let's make healthcare
+                <span className="block text-[#72d8ce]">
+                  simpler together.
+                </span>
+              </h2>
+
+              <p className="mx-auto mt-5 max-w-2xl leading-7 text-[#a9bfcc]">
+                Have a question, suggestion or want to partner with
+                CareCube? We would love to hear from you.
+              </p>
+
+              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                <Link
+                  to="/explore"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#10a79b] px-7 py-4 font-bold text-white transition hover:-translate-y-1 hover:bg-[#0e9489]"
+                >
+                  Find a Doctor
+                  <ArrowRight size={18} />
+                </Link>
+
+                <a
+                  href="mailto:hello@carecube.com"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[.06] px-7 py-4 font-bold text-white transition hover:-translate-y-1 hover:bg-white/10"
+                >
+                  Contact CareCube
+                </a>
+              </div>
+            </div>
           </div>
         </section>
       </main>
 
+      {/* =====================================================
+          FOOTER
+      ===================================================== */}
+
       <Footer />
     </div>
+  );
+}
+
+/* -------------------------------------------------------
+   PLUS ICON
+------------------------------------------------------- */
+
+function PlusIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
   );
 }
 
