@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Logo from "../../components/Logo";
+
 import {
   Activity,
   ArrowUpRight,
@@ -736,12 +738,11 @@ function DoctorDashboard() {
               <div className="flex items-center justify-between border-b border-slate-200 p-4">
                 <div>
                   <p className="text-sm font-black text-slate-900">
-                    CareCube
+                      
+
                   </p>
 
-                  <p className="text-xs text-slate-500">
-                    Doctor Portal
-                  </p>
+                
                 </div>
 
                 <button
@@ -749,7 +750,7 @@ function DoctorDashboard() {
                   onClick={() =>
                     setMobileSidebarOpen(false)
                   }
-                  className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"
+                  className="rounded-xl  text-slate-500 hover:bg-slate-100"
                   aria-label="Close sidebar"
                 >
                   <X size={20} />
@@ -803,7 +804,8 @@ function DoctorDashboard() {
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-black text-slate-900">
-                  CareCube
+                       <Logo size="md" />
+
                 </p>
 
                 <p className="truncate text-xs text-slate-500">
@@ -836,7 +838,7 @@ function DoctorDashboard() {
                   <div className="flex flex-wrap items-center gap-2">
 
                     <span className="rounded-full bg-blue-100 px-3 py-1 text-[10px] font-bold tracking-wide text-blue-700 sm:text-xs">
-                      DOCTOR PORTAL
+                      DOCTOR PANEL
                     </span>
 
                     <motion.span

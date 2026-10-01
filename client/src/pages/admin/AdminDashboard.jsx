@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import Logo from "../../components/Logo";
+
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import {
   Users,
@@ -666,21 +668,7 @@ function MobileAdminDrawer({ open, onClose }) {
         {/* CLOSE HEADER */}
 
         <div className="flex h-16 items-center justify-between border-b border-slate-200 px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
-              <ShieldCheck size={19} />
-            </div>
-
-            <div>
-              <p className="text-sm font-bold text-slate-900">
-                CareCube
-              </p>
-
-              <p className="text-[10px] text-slate-400">
-                Admin Panel
-              </p>
-            </div>
-          </div>
+          
 
           <button
             type="button"

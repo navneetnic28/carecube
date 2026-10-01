@@ -414,7 +414,7 @@ function DoctorSchedule() {
                   </p>
 
                   <p className="text-[11px] text-slate-500">
-                    Doctor Portal
+                    Doctor Panel
                   </p>
                 </div>
               </div>

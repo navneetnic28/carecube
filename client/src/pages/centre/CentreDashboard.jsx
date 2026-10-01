@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import CentreSidebar from "../../components/centre/CentreSidebar";
+import Logo from "../../components/Logo";
+
 import NotificationBell from "../../components/NotificationBell";
 
 import {
@@ -251,18 +253,15 @@ function CentreDashboard() {
 
             <div className="flex items-center gap-2">
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-                <Stethoscope size={19} />
-              </div>
+                  
+
 
               <div>
-                <p className="text-sm font-bold text-slate-900">
-                  CareCube
-                </p>
+                   <Logo size="md" />
 
-                <p className="text-[10px] text-slate-400">
-                  Centre Panel
-                </p>
+                
+
+              
               </div>
 
             </div>
@@ -781,21 +780,9 @@ function MobileMenu({ onClose }) {
 
           <div className="flex items-center gap-2">
 
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
-              <Stethoscope size={19} />
-            </div>
+           
 
-            <div>
-
-              <p className="text-sm font-bold text-slate-900">
-                CareCube
-              </p>
-
-              <p className="text-[10px] text-slate-400">
-                Centre Panel
-              </p>
-
-            </div>
+            
 
           </div>
 

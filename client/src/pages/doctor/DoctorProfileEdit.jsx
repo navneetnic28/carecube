@@ -245,7 +245,7 @@ function DoctorProfileEdit() {
 
             <div className="ml-3">
               <p className="text-sm font-bold text-slate-900">
-                Doctor Portal
+                Doctor Panel
               </p>
 
               <p className="text-[11px] text-slate-500">
@@ -318,7 +318,7 @@ function DoctorProfileEdit() {
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
             <div>
               <p className="text-sm font-bold text-slate-900">
-                Doctor Portal
+                Doctor PANEL
               </p>
 
               <p className="text-xs text-slate-500">
@@ -375,7 +375,7 @@ function DoctorProfileEdit() {
 
           <div className="ml-3 min-w-0">
             <p className="truncate text-sm font-bold text-slate-900">
-              Doctor Portal
+              Doctor Panel
             </p>
 
             <p className="truncate text-[11px] text-slate-500">
