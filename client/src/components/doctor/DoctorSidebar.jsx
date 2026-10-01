@@ -17,9 +17,7 @@ function DoctorSidebar() {
         <Link to="/doctor/schedule" className="block rounded-lg p-3 hover:bg-gray-100">
           Schedule
         </Link>
-        <Link to="/doctor/book" className="block rounded-lg p-3 hover:bg-gray-100">
-          Book for Patient
-        </Link>
+        
         <Link to="/doctor/profile" className="block rounded-lg p-3 hover:bg-gray-100">
           My Profile
         </Link>
