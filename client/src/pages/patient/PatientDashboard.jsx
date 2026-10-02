@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
@@ -21,6 +21,13 @@ import {
   Menu,
   X,
   RefreshCw,
+  BadgeCheck,
+  Navigation,
+  CalendarCheck2,
+  Heart,
+  LayoutDashboard,
+  Star,
+  Zap,
 } from "lucide-react";
 
 import api from "../../services/api";
@@ -88,7 +95,7 @@ function PatientDashboard() {
 
       const appointments = res?.data?.appointments || [];
 
-      setRecentAppointments(appointments.slice(0, 3));
+      setRecentAppointments(appointments);
     } catch (error) {
       console.error("Appointment fetch error:", error);
       setRecentAppointments([]);
@@ -126,6 +133,7 @@ function PatientDashboard() {
 
       setDoctors([]);
       setSearched(true);
+
       setSearchError(
         error?.response?.data?.message ||
           "Unable to search doctors right now."
@@ -148,124 +156,199 @@ function PatientDashboard() {
   const formatDate = (date) => {
     if (!date) return "Date unavailable";
 
-    return new Date(date).toLocaleDateString("en-IN", {
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Date unavailable";
+    }
+
+    return parsedDate.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
   };
 
+  const formatTime = (date) => {
+    if (!date) return "";
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "";
+    }
+
+    return parsedDate.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const stats = useMemo(() => {
+    const total = recentAppointments.length;
+
+    const active = recentAppointments.filter((item) =>
+      ["waiting", "in_queue", "consulting"].includes(item.status)
+    ).length;
+
+    const completed = recentAppointments.filter(
+      (item) => item.status === "completed"
+    ).length;
+
+    return {
+      total,
+      active,
+      completed,
+    };
+  }, [recentAppointments]);
+
+  const displayedAppointments = recentAppointments.slice(0, 3);
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-[#f6f9ff] text-slate-900">
 
-      {/* =========================
-          TOP NAVIGATION
-      ========================== */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      {/* =========================================================
+          NAVBAR
+      ========================================================== */}
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-xl">
 
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+
+          {/* Logo */}
+          <Link
+            to="/patient"
+            className="flex min-w-0 items-center"
+          >
             <Logo size="lg" />
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden items-center gap-2 md:flex">
 
             <Link
+              to="/patient"
+              className="flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700"
+            >
+              <LayoutDashboard size={17} />
+              Dashboard
+            </Link>
+
+            <Link
               to="/patient/appointments"
-              className="group flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             >
               <CalendarDays size={18} />
               My Appointments
             </Link>
 
-            <NotificationBell />
+            <div className="px-1">
+              <NotificationBell />
+            </div>
 
             <button
+              type="button"
               onClick={logout}
-              className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700"
             >
               <LogOut size={17} />
               Logout
             </button>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile menu button */}
           <button
+            type="button"
             onClick={() => setMobileMenu((prev) => !prev)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 md:hidden"
+            aria-label="Toggle menu"
           >
             {mobileMenu ? <X size={21} /> : <Menu size={21} />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Navigation */}
         {mobileMenu && (
-          <div className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
+          <div className="border-t border-slate-200 bg-white px-4 py-4 shadow-lg md:hidden">
+
             <div className="space-y-2">
+
+              <Link
+                to="/patient"
+                onClick={() => setMobileMenu(false)}
+                className="flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3 font-bold text-blue-700"
+              >
+                <LayoutDashboard size={19} />
+                Dashboard
+              </Link>
 
               <Link
                 to="/patient/appointments"
                 onClick={() => setMobileMenu(false)}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 font-medium text-slate-700 hover:bg-slate-100"
+                className="flex items-center gap-3 rounded-xl px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-100"
               >
                 <CalendarDays size={19} />
                 My Appointments
               </Link>
 
-              <div className="rounded-xl px-4 py-3">
+              <div className="rounded-xl border border-slate-100 px-4 py-3">
                 <NotificationBell />
               </div>
 
               <button
+                type="button"
                 onClick={logout}
-                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 font-medium text-red-600 hover:bg-red-50"
+                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 font-semibold text-red-600 transition hover:bg-red-50"
               >
                 <LogOut size={19} />
                 Logout
               </button>
+
             </div>
           </div>
         )}
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
 
-        {/* =========================
-            HERO SECTION
-        ========================== */}
-        <section className="relative overflow-hidden rounded-3xl bg-slate-900 px-6 py-8 shadow-xl sm:px-8 lg:px-10 lg:py-10">
+        {/* =========================================================
+            HERO
+        ========================================================== */}
+        <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#031b4e] via-[#063d92] to-[#0878ed] shadow-2xl shadow-blue-200">
 
-          {/* Background Decorations */}
-          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
-          <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
+          {/* Decorative elements */}
+          <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-blue-300/20 blur-3xl" />
+          <div className="pointer-events-none absolute right-1/3 top-1/2 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
 
-          <div className="relative z-10 grid items-center gap-8 lg:grid-cols-[1.4fr_0.6fr]">
+          <div className="relative z-10 grid gap-8 px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-[1.4fr_.6fr] lg:px-10 lg:py-11">
 
-            <div>
+            <div className="min-w-0">
 
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur">
-                <Sparkles size={14} className="text-emerald-300" />
-                Welcome to CareCube
+              <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-blue-50 backdrop-blur">
+                <Sparkles size={14} className="shrink-0 text-cyan-200" />
+                <span className="truncate">
+                  Welcome to CareCube
+                </span>
               </div>
 
-              <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                Your health,
-                <span className="block text-emerald-300">
-                  simplified.
+              <h1 className="mt-5 max-w-2xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl xl:text-6xl">
+                Your healthcare.
+                <span className="block text-cyan-200">
+                  Simplified.
                 </span>
               </h1>
 
-              <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
-                Find verified doctors, explore nearby chambers, book
-                appointments and track your queue — all from one place.
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-blue-100 sm:text-base">
+                Find verified doctors, discover nearby centres, book
+                appointments and stay updated with your healthcare journey —
+                all from one simple platform.
               </p>
 
-              <div className="mt-7 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
 
                 <Link
                   to="/explore"
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3.5 text-sm font-black text-[#063b8e] shadow-xl transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl"
                 >
                   <Search size={18} />
                   Explore Doctors
@@ -274,179 +357,317 @@ function PatientDashboard() {
 
                 <Link
                   to="/patient/appointments"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/15"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/15"
                 >
                   <CalendarDays size={18} />
                   My Appointments
                 </Link>
 
               </div>
+
+              {/* Hero trust points */}
+              <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-xs font-semibold text-blue-100">
+
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={15} className="text-cyan-200" />
+                  Verified Doctors
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={15} className="text-cyan-200" />
+                  Trusted Centres
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Zap size={15} className="text-cyan-200" />
+                  Easy Booking
+                </div>
+
+              </div>
             </div>
 
-            {/* Hero Illustration Card */}
-            <div className="hidden lg:block">
-              <div className="mx-auto max-w-sm rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-xl">
+            {/* Hero visual */}
+            <div className="hidden lg:flex lg:items-center lg:justify-end">
 
-                <div className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-xl">
+              <div className="w-full max-w-sm rounded-[28px] border border-white/15 bg-white/10 p-4 shadow-2xl backdrop-blur-xl">
 
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                    <HeartPulse size={28} />
+                <div className="rounded-2xl bg-white p-4 shadow-xl">
+
+                  <div className="flex items-center gap-4">
+
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                      <HeartPulse size={29} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-500">
+                        CareCube Health
+                      </p>
+
+                      <p className="mt-1 text-lg font-black text-slate-900">
+                        Care made simple
+                      </p>
+                    </div>
+
                   </div>
-
-                  <div>
-                    <p className="text-xs font-medium text-slate-500">
-                      CareCube Health
-                    </p>
-
-                    <p className="mt-1 text-lg font-bold text-slate-900">
-                      Care made simple
-                    </p>
-                  </div>
-
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
 
-                  <div className="rounded-2xl bg-white/10 p-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
                     <Stethoscope
-                      size={21}
-                      className="text-emerald-300"
+                      size={22}
+                      className="text-cyan-200"
                     />
-                    <p className="mt-3 text-xs text-slate-300">
+                    <p className="mt-3 text-xs font-semibold text-blue-100">
                       Verified Doctors
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-white/10 p-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
                     <Hospital
-                      size={21}
-                      className="text-blue-300"
+                      size={22}
+                      className="text-blue-100"
                     />
-                    <p className="mt-3 text-xs text-slate-300">
+                    <p className="mt-3 text-xs font-semibold text-blue-100">
                       Nearby Centres
                     </p>
                   </div>
 
                 </div>
+
+                <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-4">
+
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-cyan-200">
+                    <CalendarCheck2 size={19} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white">
+                      Healthcare journey
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-blue-100">
+                      Find • Book • Track
+                    </p>
+                  </div>
+
+                </div>
               </div>
             </div>
-
           </div>
         </section>
 
-        {/* =========================
+        {/* =========================================================
+            STAT CARDS
+        ========================================================== */}
+        <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+
+            <div className="flex items-center gap-3">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <CalendarDays size={19} />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-xl font-black text-slate-900">
+                  {loadingAppointments ? "—" : stats.total}
+                </p>
+
+                <p className="truncate text-xs font-medium text-slate-500">
+                  Appointments
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+
+            <div className="flex items-center gap-3">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <Activity size={19} />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-xl font-black text-slate-900">
+                  {loadingAppointments ? "—" : stats.active}
+                </p>
+
+                <p className="truncate text-xs font-medium text-slate-500">
+                  Active
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:col-span-1 sm:p-5">
+
+            <div className="flex items-center gap-3">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                <CheckCircle2 size={19} />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-xl font-black text-slate-900">
+                  {loadingAppointments ? "—" : stats.completed}
+                </p>
+
+                <p className="truncate text-xs font-medium text-slate-500">
+                  Completed
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+        </section>
+
+        {/* =========================================================
             QUICK ACTIONS
-        ========================== */}
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        ========================================================== */}
+        <section className="mt-6">
 
-          <Link
-            to="/explore"
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <Search size={21} />
-              </div>
-
-              <ArrowRight
-                size={18}
-                className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600"
-              />
-
-            </div>
-
-            <h3 className="mt-4 font-bold">Find a Doctor</h3>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Search doctors by speciality and location.
-            </p>
-          </Link>
-
-          <Link
-            to="/patient/appointments"
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <CalendarDays size={21} />
-              </div>
-
-              <ArrowRight
-                size={18}
-                className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600"
-              />
-
-            </div>
-
-            <h3 className="mt-4 font-bold">Appointments</h3>
-
-            <p className="mt-1 text-sm text-slate-500">
-              View and manage your appointments.
-            </p>
-          </Link>
-
-          <Link
-            to="/explore"
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                <Hospital size={21} />
-              </div>
-
-              <ArrowRight
-                size={18}
-                className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-600"
-              />
-
-            </div>
-
-            <h3 className="mt-4 font-bold">Explore Centres</h3>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Discover clinics and chambers near you.
-            </p>
-          </Link>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <ShieldCheck size={21} />
-            </div>
-
-            <h3 className="mt-4 font-bold">Verified Care</h3>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Discover verified doctors on CareCube.
+          <div className="mb-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.15em] text-blue-600">
+              Quick access
             </p>
 
+            <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+              What would you like to do?
+            </h2>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+            <Link
+              to="/explore"
+              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl"
+            >
+
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-blue-50 transition group-hover:scale-125" />
+
+              <div className="relative flex items-center justify-between">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
+                  <Search size={21} />
+                </div>
+
+                <ArrowRight
+                  size={18}
+                  className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-600"
+                />
+              </div>
+
+              <h3 className="relative mt-4 font-black text-slate-900">
+                Find a Doctor
+              </h3>
+
+              <p className="relative mt-1 text-sm leading-6 text-slate-500">
+                Search doctors by speciality and location.
+              </p>
+            </Link>
+
+            <Link
+              to="/patient/appointments"
+              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl"
+            >
+
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-50 transition group-hover:scale-125" />
+
+              <div className="relative flex items-center justify-between">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-600 group-hover:text-white">
+                  <CalendarDays size={21} />
+                </div>
+
+                <ArrowRight
+                  size={18}
+                  className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-600"
+                />
+              </div>
+
+              <h3 className="relative mt-4 font-black text-slate-900">
+                Appointments
+              </h3>
+
+              <p className="relative mt-1 text-sm leading-6 text-slate-500">
+                View and manage your appointments.
+              </p>
+            </Link>
+
+            <Link
+              to="/explore"
+              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl"
+            >
+
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-violet-50 transition group-hover:scale-125" />
+
+              <div className="relative flex items-center justify-between">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-violet-600 transition group-hover:bg-violet-600 group-hover:text-white">
+                  <Hospital size={21} />
+                </div>
+
+                <ArrowRight
+                  size={18}
+                  className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-violet-600"
+                />
+              </div>
+
+              <h3 className="relative mt-4 font-black text-slate-900">
+                Explore Centres
+              </h3>
+
+              <p className="relative mt-1 text-sm leading-6 text-slate-500">
+                Discover clinics and chambers near you.
+              </p>
+            </Link>
+
+            <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-50" />
+
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <ShieldCheck size={21} />
+              </div>
+
+              <h3 className="relative mt-4 font-black text-slate-900">
+                Verified Care
+              </h3>
+
+              <p className="relative mt-1 text-sm leading-6 text-slate-500">
+                Discover verified doctors on CareCube.
+              </p>
+            </div>
+
+          </div>
         </section>
 
-        {/* =========================
+        {/* =========================================================
             RECENT APPOINTMENTS
-        ========================== */}
-        <section className="mt-8">
+        ========================================================== */}
+        <section className="mt-10">
 
-          <div className="mb-4 flex items-end justify-between gap-4">
+          <div className="mb-5 flex items-end justify-between gap-4">
 
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.15em] text-blue-600">
                 Your activity
               </p>
 
-              <h2 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
                 Recent appointments
               </h2>
             </div>
 
             <Link
               to="/patient/appointments"
-              className="hidden items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700 sm:flex"
+              className="hidden shrink-0 items-center gap-1 text-sm font-bold text-blue-600 transition hover:text-blue-800 sm:flex"
             >
               View all
               <ChevronRight size={17} />
@@ -461,21 +682,29 @@ function PatientDashboard() {
               {[1, 2, 3].map((item) => (
                 <div
                   key={item}
-                  className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5"
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
-                  <div className="h-5 w-32 rounded bg-slate-200" />
-                  <div className="mt-3 h-4 w-24 rounded bg-slate-200" />
-                  <div className="mt-5 h-8 w-28 rounded bg-slate-200" />
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 animate-pulse rounded-xl bg-slate-200" />
+
+                    <div className="flex-1">
+                      <div className="h-4 w-28 animate-pulse rounded bg-slate-200" />
+                      <div className="mt-2 h-3 w-20 animate-pulse rounded bg-slate-200" />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 h-3 w-32 animate-pulse rounded bg-slate-200" />
+                  <div className="mt-5 h-8 w-28 animate-pulse rounded-full bg-slate-200" />
                 </div>
               ))}
 
             </div>
 
-          ) : recentAppointments.length > 0 ? (
+          ) : displayedAppointments.length > 0 ? (
 
             <div className="grid gap-4 md:grid-cols-3">
 
-              {recentAppointments.map((appt) => {
+              {displayedAppointments.map((appt) => {
 
                 const status = getStatus(appt.status);
                 const StatusIcon = status.icon;
@@ -483,51 +712,73 @@ function PatientDashboard() {
                 return (
                   <div
                     key={appt._id}
-                    className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl"
                   >
 
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
 
                       <div className="flex min-w-0 items-center gap-3">
 
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                           <UserRound size={20} />
                         </div>
 
                         <div className="min-w-0">
-                          <p className="truncate font-bold text-slate-900">
+                          <p className="truncate font-black text-slate-900">
                             Dr. {appt.doctorId?.name || "Doctor"}
                           </p>
 
-                          <p className="truncate text-xs text-slate-500">
+                          <p className="mt-0.5 truncate text-xs text-slate-500">
                             {appt.centreId?.name || "Centre unavailable"}
                           </p>
                         </div>
 
                       </div>
 
-                      <span className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-500">
                         #{appt.tokenNumber || "--"}
                       </span>
 
                     </div>
 
-                    <div className="mt-5 flex items-center gap-2 text-sm text-slate-500">
-                      <CalendarDays size={16} />
-                      {formatDate(appt.appointmentDate)}
+                    <div className="mt-5 rounded-xl bg-slate-50 p-3">
+
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                        <CalendarDays
+                          size={16}
+                          className="shrink-0 text-blue-500"
+                        />
+                        <span className="truncate">
+                          {formatDate(appt.appointmentDate)}
+                        </span>
+                      </div>
+
+                      {formatTime(appt.appointmentDate) && (
+                        <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                          <Clock3 size={14} />
+                          {formatTime(appt.appointmentDate)}
+                        </div>
+                      )}
+
                     </div>
 
-                    <div className="mt-4 border-t border-slate-100 pt-4">
+                    <div className="mt-4 flex items-center justify-between gap-3">
 
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${status.cls}`}
+                        className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold ${status.cls}`}
                       >
-                        <StatusIcon size={14} />
-                        {status.label}
+                        <StatusIcon size={14} className="shrink-0" />
+                        <span className="truncate">
+                          {status.label}
+                        </span>
+                      </span>
+
+                      <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-slate-400">
+                        <Heart size={12} />
+                        CareCube
                       </span>
 
                     </div>
-
                   </div>
                 );
               })}
@@ -536,397 +787,435 @@ function PatientDashboard() {
 
           ) : (
 
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+            <div className="overflow-hidden rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center sm:p-10">
 
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
-                <CalendarDays size={25} />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <CalendarDays size={28} />
               </div>
 
-              <h3 className="mt-4 font-bold text-slate-900">
+              <h3 className="mt-5 text-lg font-black text-slate-900">
                 No appointments yet
               </h3>
 
-              <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
                 Find a doctor and book your first appointment through
                 CareCube.
               </p>
 
               <Link
                 to="/explore"
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700"
               >
                 Find a Doctor
                 <ArrowRight size={16} />
               </Link>
 
             </div>
-
           )}
 
           <Link
             to="/patient/appointments"
-            className="mt-4 flex items-center justify-center gap-1 text-sm font-semibold text-blue-600 sm:hidden"
+            className="mt-4 flex items-center justify-center gap-1 text-sm font-bold text-blue-600 sm:hidden"
           >
             View all appointments
             <ChevronRight size={17} />
           </Link>
-
         </section>
 
-        {/* =========================
-            SEARCH DOCTOR
-        ========================== */}
+        {/* =========================================================
+            DOCTOR SEARCH
+        ========================================================== */}
         <section className="mt-10">
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+          <div className="relative overflow-hidden rounded-[28px] border border-blue-100 bg-white p-5 shadow-sm sm:p-7">
 
-            <div className="max-w-2xl">
+            <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-blue-50" />
 
-              <div className="flex items-center gap-2 text-emerald-600">
-                <Stethoscope size={20} />
-                <span className="text-sm font-bold">
-                  Doctor discovery
-                </span>
+            <div className="relative">
+
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700">
+                <Stethoscope size={15} />
+                Doctor discovery
               </div>
 
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              <h2 className="mt-4 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
                 Find the right doctor
               </h2>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                 Search for verified doctors by name and explore their
                 associated chambers.
               </p>
 
-            </div>
-
-            <form
-              onSubmit={search}
-              className="mt-6 flex flex-col gap-3 lg:flex-row"
-            >
-
-              <div className="relative flex-1">
-
-                <Search
-                  size={19}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-
-                <input
-                  type="text"
-                  placeholder="Search doctor by name..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="h-13 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-medium outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
-                />
-
-              </div>
-
-              <button
-                type="submit"
-                disabled={loadingDoctors}
-                className="flex h-13 items-center justify-center gap-2 rounded-xl bg-slate-900 px-7 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              <form
+                onSubmit={search}
+                className="mt-6 flex flex-col gap-3 lg:flex-row"
               >
 
-                {loadingDoctors ? (
-                  <>
-                    <RefreshCw
-                      size={18}
-                      className="animate-spin"
-                    />
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search size={18} />
-                    Search Doctors
-                  </>
-                )}
+                <div className="relative min-w-0 flex-1">
 
-              </button>
+                  <Search
+                    size={19}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
 
-              <Link
-                to="/explore"
-                className="flex h-13 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-              >
-                Advanced Explore
-                <ArrowRight size={16} />
-              </Link>
-
-            </form>
-
-          </div>
-
-        </section>
-
-        {/* =========================
-            SEARCH RESULTS
-        ========================== */}
-        <section className="mt-6">
-
-          {searchError && (
-            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-              {searchError}
-            </div>
-          )}
-
-          {searched && !loadingDoctors && doctors.length === 0 && !searchError && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
-                <Search size={27} />
-              </div>
-
-              <h3 className="mt-4 text-lg font-bold">
-                No verified doctors found
-              </h3>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Try another doctor name or use Advanced Explore.
-              </p>
-
-              <Link
-                to="/explore"
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white"
-              >
-                Explore Doctors
-                <ArrowRight size={16} />
-              </Link>
-
-            </div>
-          )}
-
-          {doctors.length > 0 && (
-
-            <div>
-
-              <div className="mb-4 flex items-center justify-between">
-
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-blue-600">
-                    Search results
-                  </p>
-
-                  <h2 className="mt-1 text-xl font-bold text-slate-900">
-                    Doctors available for you
-                  </h2>
+                  <input
+                    type="text"
+                    placeholder="Search doctor by name..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="h-14 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-medium outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                  />
                 </div>
 
-                <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
-                  {doctors.length} found
-                </span>
+                <button
+                  type="submit"
+                  disabled={loadingDoctors}
+                  className="flex h-14 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 text-sm font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+
+                  {loadingDoctors ? (
+                    <>
+                      <RefreshCw
+                        size={18}
+                        className="animate-spin"
+                      />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={18} />
+                      Search Doctors
+                    </>
+                  )}
+
+                </button>
+
+                <Link
+                  to="/explore"
+                  className="flex h-14 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  Advanced Explore
+                  <ArrowRight size={16} />
+                </Link>
+
+              </form>
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================
+            SEARCH ERROR
+        ========================================================== */}
+        {searchError && (
+          <section className="mt-5">
+            <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+              <XCircle size={19} className="mt-0.5 shrink-0" />
+              <p className="break-words">
+                {searchError}
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* =========================================================
+            NO RESULTS
+        ========================================================== */}
+        {searched &&
+          !loadingDoctors &&
+          doctors.length === 0 &&
+          !searchError && (
+            <section className="mt-6">
+
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm sm:p-10">
+
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                  <Search size={27} />
+                </div>
+
+                <h3 className="mt-5 text-lg font-black text-slate-900">
+                  No verified doctors found
+                </h3>
+
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+                  Try another doctor name or use Advanced Explore.
+                </p>
+
+                <Link
+                  to="/explore"
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"
+                >
+                  Explore Doctors
+                  <ArrowRight size={16} />
+                </Link>
 
               </div>
+            </section>
+          )}
 
-              <div className="grid gap-5 lg:grid-cols-2">
+        {/* =========================================================
+            SEARCH RESULTS
+        ========================================================== */}
+        {doctors.length > 0 && (
+          <section className="mt-7">
 
-                {doctors.map((doctor) => (
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 
-                  <div
-                    key={doctor._id}
-                    className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
-                  >
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-[0.15em] text-blue-600">
+                  Search results
+                </p>
 
-                    {/* Doctor Header */}
-                    <div className="relative bg-slate-900 p-5 sm:p-6">
+                <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+                  Doctors available for you
+                </h2>
+              </div>
 
-                      <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-emerald-400/10 blur-2xl" />
+              <span className="w-fit rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700">
+                {doctors.length} found
+              </span>
 
-                      <div className="relative flex items-start gap-4">
+            </div>
 
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-emerald-300 ring-1 ring-white/10">
-                          <Stethoscope size={27} />
+            <div className="grid gap-5 lg:grid-cols-2">
+
+              {doctors.map((doctor) => (
+
+                <article
+                  key={doctor._id}
+                  className="group min-w-0 overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-2xl"
+                >
+
+                  {/* Doctor top */}
+                  <div className="relative overflow-hidden bg-gradient-to-br from-[#031b4e] to-[#0878ed] p-5 sm:p-6">
+
+                    <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-cyan-300/20 blur-2xl" />
+
+                    <div className="relative flex min-w-0 items-start gap-4">
+
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-cyan-200 ring-1 ring-white/10">
+                        <Stethoscope size={27} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+
+                        <div className="flex flex-wrap items-center gap-2">
+
+                          <h3 className="min-w-0 break-words text-lg font-black text-white">
+                            Dr. {doctor.name}
+                          </h3>
+
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-cyan-100">
+                            <BadgeCheck size={12} />
+                            Verified
+                          </span>
+
                         </div>
 
-                        <div className="min-w-0 flex-1">
+                        <p className="mt-1 break-words text-sm font-bold text-cyan-200">
+                          {doctor.specialization ||
+                            "General Physician"}
+                        </p>
 
-                          <div className="flex flex-wrap items-center gap-2">
-
-                            <h3 className="text-lg font-bold text-white">
-                              Dr. {doctor.name}
-                            </h3>
-
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-300">
-                              <ShieldCheck size={12} />
-                              Verified
-                            </span>
-
-                          </div>
-
-                          <p className="mt-1 text-sm font-semibold text-emerald-300">
-                            {doctor.specialization || "General Physician"}
+                        {doctor.qualification && (
+                          <p className="mt-1 break-words text-xs text-blue-100">
+                            {doctor.qualification}
                           </p>
+                        )}
 
-                          {doctor.qualification && (
-                            <p className="mt-1 text-xs text-slate-400">
-                              {doctor.qualification}
-                            </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-bold text-blue-100">
+                            <ShieldCheck size={12} />
+                            Trusted
+                          </span>
+
+                          {doctor.experience && (
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-bold text-blue-100">
+                              <Star size={12} />
+                              {doctor.experience}
+                            </span>
                           )}
 
                         </div>
-
                       </div>
                     </div>
+                  </div>
 
-                    {/* Chambers */}
-                    <div className="p-5 sm:p-6">
+                  {/* Chambers */}
+                  <div className="p-5 sm:p-6">
 
-                      <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
 
-                        <div className="flex items-center gap-2">
-                          <Hospital
-                            size={17}
-                            className="text-slate-500"
-                          />
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Hospital
+                          size={17}
+                          className="shrink-0 text-blue-600"
+                        />
 
-                          <h4 className="text-sm font-bold text-slate-900">
-                            Associated chambers
-                          </h4>
-                        </div>
-
-                        <span className="text-xs font-medium text-slate-400">
-                          {doctor.chambers?.length || 0} centre
-                          {doctor.chambers?.length === 1 ? "" : "s"}
-                        </span>
-
+                        <h4 className="truncate text-sm font-black text-slate-900">
+                          Associated chambers
+                        </h4>
                       </div>
 
-                      <div className="mt-4 space-y-3">
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">
+                        {doctor.chambers?.length || 0} centre
+                        {doctor.chambers?.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
 
-                        {(doctor.chambers || []).map((centre) => (
+                    <div className="mt-4 space-y-3">
 
-                          <div
-                            key={centre._id}
-                            className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
-                          >
+                      {(doctor.chambers || []).map((centre) => (
 
-                            <div className="flex items-start gap-3">
+                        <div
+                          key={centre._id}
+                          className="group/centre rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50/40"
+                        >
 
-                              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-600 shadow-sm">
-                                <MapPin size={17} />
-                              </div>
+                          <div className="flex min-w-0 items-start gap-3">
 
-                              <div className="min-w-0">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+                              <MapPin size={17} />
+                            </div>
 
-                                <p className="font-bold text-slate-900">
-                                  {centre.name}
-                                </p>
+                            <div className="min-w-0 flex-1">
 
-                                <p className="mt-1 text-xs leading-5 text-slate-500">
-                                  {centre.address ||
-                                    "Address unavailable"}
-                                </p>
+                              <p className="break-words font-black text-slate-900">
+                                {centre.name}
+                              </p>
 
+                              <p className="mt-1 break-words text-xs leading-5 text-slate-500">
+                                {centre.address ||
+                                  "Address unavailable"}
+                              </p>
+
+                              <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                                <Navigation size={11} />
+                                CareCube Centre
                               </div>
 
                             </div>
 
                           </div>
+                        </div>
+                      ))}
 
-                        ))}
+                      {(!doctor.chambers ||
+                        doctor.chambers.length === 0) && (
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
 
-                        {(!doctor.chambers ||
-                          doctor.chambers.length === 0) && (
+                          <Hospital
+                            size={24}
+                            className="mx-auto text-slate-400"
+                          />
 
-                          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center">
-
-                            <Hospital
-                              size={22}
-                              className="mx-auto text-slate-400"
-                            />
-
-                            <p className="mt-2 text-sm font-medium text-slate-500">
-                              No associated centre yet
-                            </p>
-
-                          </div>
-                        )}
-
-                      </div>
-
-                      <Link
-                        to={`/doctor/${doctor._id}`}
-                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow-md"
-                      >
-                        View Profile & Book
-                        <ArrowRight size={17} />
-                      </Link>
-
+                          <p className="mt-2 text-sm font-bold text-slate-500">
+                            No associated centre yet
+                          </p>
+                        </div>
+                      )}
                     </div>
 
+                    <Link
+                      to={`/doctor/${doctor._id}`}
+                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl"
+                    >
+                      View Profile & Book
+                      <ArrowRight size={17} />
+                    </Link>
                   </div>
-
-                ))}
-
-              </div>
-
+                </article>
+              ))}
             </div>
-          )}
+          </section>
+        )}
 
-        </section>
-
-        {/* =========================
-            BOTTOM TRUST SECTION
-        ========================== */}
+        {/* =========================================================
+            TRUST / CTA
+        ========================================================== */}
         <section className="mt-10 mb-6">
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="relative overflow-hidden rounded-[28px] border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50 p-5 shadow-sm sm:p-7">
 
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-100/60 blur-2xl" />
 
-              <div className="flex items-center gap-4">
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="flex min-w-0 items-start gap-4">
+
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200">
                   <ShieldCheck size={23} />
                 </div>
 
-                <div>
-                  <h3 className="font-bold text-slate-900">
+                <div className="min-w-0">
+
+                  <h3 className="break-words text-base font-black text-slate-900 sm:text-lg">
                     Your healthcare journey, in one place
                   </h3>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
-                    Search doctors, manage appointments and stay updated
-                    with your queue.
+                  <p className="mt-1 max-w-2xl break-words text-xs leading-6 text-slate-500 sm:text-sm">
+                    Search doctors, discover centres, manage appointments
+                    and stay updated with your queue.
                   </p>
-                </div>
 
+                </div>
               </div>
 
               <Link
                 to="/explore"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700"
               >
                 Explore CareCube
                 <ArrowRight size={16} />
               </Link>
 
             </div>
-
           </div>
-
         </section>
-
       </main>
 
-      {/* =========================
+      {/* =========================================================
           FOOTER
-      ========================== */}
+      ========================================================== */}
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-center text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 lg:text-left">
 
-          <p>
-            © {new Date().getFullYear()} CareCube. Healthcare made simpler.
-          </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 text-center sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:text-left">
 
-          <div className="flex items-center justify-center gap-2">
-            <HeartPulse size={14} />
-            <span>Find • Book • Track</span>
+          <div>
+            <p className="text-xs font-semibold text-slate-400">
+              © {new Date().getFullYear()} CareCube
+            </p>
+
+            <p className="mt-1 text-[11px] text-slate-400">
+              Healthcare made simpler.
+            </p>
           </div>
 
+          <div className="flex items-center justify-center gap-3">
+
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-600">
+              <HeartPulse size={13} />
+              Find
+            </span>
+
+            <span className="text-slate-300">•</span>
+
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-600">
+              <CalendarCheck2 size={13} />
+              Book
+            </span>
+
+            <span className="text-slate-300">•</span>
+
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1.5 text-[11px] font-bold text-violet-600">
+              <Activity size={13} />
+              Track
+            </span>
+
+          </div>
         </div>
       </footer>
-
     </div>
   );
 }

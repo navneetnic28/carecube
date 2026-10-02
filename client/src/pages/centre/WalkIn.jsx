@@ -13,7 +13,7 @@ import {
   IndianRupee,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
+  ChevronDown,
 } from "lucide-react";
 
 function WalkIn() {
@@ -26,10 +26,44 @@ function WalkIn() {
     amount: "",
   });
 
+  const [doctors, setDoctors] = useState([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  /* =====================================================
+     LOAD ASSOCIATED DOCTORS
+  ===================================================== */
+
+  useEffect(() => {
+    loadDoctors();
+  }, []);
+
+  const loadDoctors = async () => {
+    try {
+      setLoadingDoctors(true);
+
+      const response = await api.get("/centre/doctors");
+
+      setDoctors(response.data?.doctors || []);
+    } catch (error) {
+      console.error("Doctors loading error:", error);
+
+      setDoctors([]);
+
+      setMessage(
+        error.response?.data?.message ||
+          "Unable to load associated doctors"
+      );
+
+      setMessageType("error");
+    } finally {
+      setLoadingDoctors(false);
+    }
+  };
 
   /* =====================================================
      MOBILE MENU
@@ -87,18 +121,23 @@ function WalkIn() {
 
     setMessage("");
     setMessageType("");
+
+    if (!form.doctorId) {
+      setMessage("Please select a doctor.");
+      setMessageType("error");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const response = await api.post("/centre/walk-in", {
         ...form,
-        amount: form.amount
-          ? Number(form.amount)
-          : 0,
+        amount: form.amount ? Number(form.amount) : 0,
       });
 
       setMessage(
-        `Added to queue with Token #${response.data.appointment.tokenNumber}`
+        `Added to queue with Token #${response.data?.appointment?.tokenNumber}`
       );
 
       setMessageType("success");
@@ -131,11 +170,18 @@ function WalkIn() {
     setMobileMenuOpen(false);
   };
 
+  /* =====================================================
+     SELECTED DOCTOR
+  ===================================================== */
+
+  const selectedDoctor = doctors.find(
+    (doctor) => doctor._id === form.doctorId
+  );
+
   return (
     <div className="min-h-screen bg-[#f6f8fc]">
       {/* =================================================
           DESKTOP SIDEBAR
-          Visible only >= lg
       ================================================= */}
 
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
@@ -148,8 +194,6 @@ function WalkIn() {
 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white lg:hidden">
         <div className="flex h-16 items-center justify-between px-4">
-          {/* MENU */}
-
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -158,8 +202,6 @@ function WalkIn() {
           >
             <Menu size={22} />
           </button>
-
-          {/* TITLE */}
 
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -177,8 +219,6 @@ function WalkIn() {
             </div>
           </div>
 
-          {/* BALANCE */}
-
           <div className="w-10" />
         </div>
       </header>
@@ -189,8 +229,6 @@ function WalkIn() {
 
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[100] lg:hidden">
-          {/* OVERLAY */}
-
           <button
             type="button"
             aria-label="Close menu"
@@ -198,11 +236,7 @@ function WalkIn() {
             className="absolute inset-0 h-full w-full cursor-default bg-slate-950/50 backdrop-blur-[2px]"
           />
 
-          {/* DRAWER */}
-
           <div className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col bg-white shadow-2xl">
-            {/* DRAWER HEADER */}
-
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -220,8 +254,6 @@ function WalkIn() {
                 </div>
               </div>
 
-              {/* CLOSE */}
-
               <button
                 type="button"
                 onClick={closeMobileMenu}
@@ -232,13 +264,10 @@ function WalkIn() {
               </button>
             </div>
 
-            {/* SIDEBAR */}
-
             <div
               className="min-h-0 flex-1 overflow-y-auto"
               onClick={(e) => {
-                const target =
-                  e.target.closest("a");
+                const target = e.target.closest("a");
 
                 if (target) {
                   closeMobileMenu();
@@ -252,13 +281,7 @@ function WalkIn() {
       )}
 
       {/* =================================================
-          MAIN CONTENT
-
-          Desktop:
-          ml-64
-
-          Mobile:
-          full width
+          MAIN
       ================================================= */}
 
       <main className="min-w-0 lg:ml-64">
@@ -268,21 +291,19 @@ function WalkIn() {
 
         <header className="hidden border-b border-slate-200 bg-white lg:block">
           <div className="mx-auto w-full max-w-7xl px-8 py-6">
-            <div className="flex items-center justify-between gap-5">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <UserPlus size={22} />
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <UserPlus size={22} />
+              </div>
 
-                <div className="min-w-0">
-                  <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                    Walk-in Patient
-                  </h1>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                  Walk-in Patient
+                </h1>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    Add a patient directly to today's queue
-                  </p>
-                </div>
+                <p className="mt-1 text-sm text-slate-500">
+                  Add a patient directly to today's queue
+                </p>
               </div>
             </div>
           </div>
@@ -410,10 +431,7 @@ function WalkIn() {
                     className="mb-1.5 block text-sm font-semibold text-slate-700"
                   >
                     Patient Name
-                    <span className="text-red-500">
-                      {" "}
-                      *
-                    </span>
+                    <span className="text-red-500"> *</span>
                   </label>
 
                   <div className="relative">
@@ -445,10 +463,7 @@ function WalkIn() {
                     className="mb-1.5 block text-sm font-semibold text-slate-700"
                   >
                     Phone Number
-                    <span className="text-red-500">
-                      {" "}
-                      *
-                    </span>
+                    <span className="text-red-500"> *</span>
                   </label>
 
                   <div className="relative">
@@ -471,7 +486,7 @@ function WalkIn() {
                 </div>
 
                 {/* =================================================
-                    DOCTOR ID
+                    ASSOCIATED DOCTOR
                 ================================================= */}
 
                 <div>
@@ -479,33 +494,91 @@ function WalkIn() {
                     htmlFor="doctor-id"
                     className="mb-1.5 block text-sm font-semibold text-slate-700"
                   >
-                    Doctor ID
-                    <span className="text-red-500">
-                      {" "}
-                      *
-                    </span>
+                    Select Doctor
+                    <span className="text-red-500"> *</span>
                   </label>
 
                   <div className="relative">
                     <Stethoscope
                       size={17}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400"
                     />
 
-                    <input
+                    <select
                       id="doctor-id"
-                      type="text"
                       name="doctorId"
-                      placeholder="Enter doctor ID"
                       value={form.doctorId}
                       onChange={handleChange}
                       required
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                      disabled={
+                        loadingDoctors ||
+                        doctors.length === 0
+                      }
+                      className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      <option value="">
+                        {loadingDoctors
+                          ? "Loading doctors..."
+                          : doctors.length === 0
+                          ? "No associated doctors"
+                          : "Select an associated doctor"}
+                      </option>
+
+                      {doctors.map((doctor) => (
+                        <option
+                          key={doctor._id}
+                          value={doctor._id}
+                        >
+                          Dr. {doctor.name}
+                          {doctor.specialization
+                            ? ` — ${doctor.specialization}`
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      size={17}
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                     />
                   </div>
 
+                  {/* SELECTED DOCTOR PREVIEW */}
+
+                  {selectedDoctor && (
+                    <div className="mt-2 flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2">
+                      {selectedDoctor.photoUrl ? (
+                        <img
+                          src={selectedDoctor.photoUrl}
+                          alt={selectedDoctor.name}
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
+                          {selectedDoctor.name?.[0] ||
+                            "D"}
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-blue-800">
+                          Dr. {selectedDoctor.name}
+                        </p>
+
+                        <p className="truncate text-[11px] text-blue-600">
+                          {selectedDoctor.specialization ||
+                            "Doctor"}
+
+                          {selectedDoctor.qualification
+                            ? ` · ${selectedDoctor.qualification}`
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <p className="mt-1.5 text-xs text-slate-400">
-                    Enter the associated doctor's ID.
+                    Only doctors associated with your centre are shown.
                   </p>
                 </div>
 
@@ -562,7 +635,7 @@ function WalkIn() {
                       name="paymentMethod"
                       value={form.paymentMethod}
                       onChange={handleChange}
-                      className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                      className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="cash">
                         Cash
@@ -576,6 +649,11 @@ function WalkIn() {
                         No payment yet
                       </option>
                     </select>
+
+                    <ChevronDown
+                      size={17}
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
                   </div>
                 </div>
 
@@ -624,7 +702,11 @@ function WalkIn() {
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={
+                      submitting ||
+                      loadingDoctors ||
+                      doctors.length === 0
+                    }
                     className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     {submitting ? (
@@ -648,7 +730,7 @@ function WalkIn() {
               INFO CARDS
           ================================================= */}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -661,8 +743,9 @@ function WalkIn() {
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Make sure the doctor ID belongs to a
-                    doctor associated with this centre.
+                    Select a doctor associated with this
+                    centre. You no longer need to enter the
+                    doctor's ID manually.
                   </p>
                 </div>
               </div>
@@ -681,7 +764,8 @@ function WalkIn() {
 
                   <p className="mt-1 text-xs leading-5 text-slate-500">
                     After registration, the patient will be
-                    added to the doctor's queue with a token.
+                    added to the selected doctor's queue with
+                    a token.
                   </p>
                 </div>
               </div>
